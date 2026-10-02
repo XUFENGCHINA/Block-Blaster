@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>方块枪神 2D · Block Gunner</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+
+  <!-- ================= HUD ================= -->
+  <div id="hud">
+    <div class="hud-top">
+      <div class="hud-left">
+        <div class="hud-stat"><span class="ico">❤️</span><div class="bar"><i id="hpFill"></i></div><span class="num" id="hpTxt">100</span></div>
+        <div class="hud-stat"><span class="ico">💨</span><div class="bar dash"><i id="dashFill"></i></div><span class="num" id="dashTxt">就绪</span></div>
+      </div>
+      <div class="hud-mid">
+        <div class="hud-mode" id="hudMode">第 1 波</div>
+        <div class="combo" id="combo"></div>
+      </div>
+      <div class="hud-right">
+        <div class="chip" id="brChip"><span class="ico">🪂</span><b id="brLeft">0</b></div>
+        <div class="chip"><span class="ico">🪙</span><b id="hudCoins">0</b></div>
+        <div class="chip"><span class="ico">⭐</span><b id="scoreTxt">0</b></div>
+        <div class="chip"><span class="ico">💀</span><b id="killTxt">0</b></div>
+      </div>
+    </div>
+        <div id="netHud">
+      <span class="nh-code" id="netHudCode">房间 ----</span>
+      <span class="nh-ping" id="netHudPing">--</span>
+      <span class="nh-players" id="netHudPlayers"></span>
+    </div><div class="hud-bottom">
+      <div class="ammo"><div class="pips" id="ammoPips"></div><span id="ammoTxt">12 / 12</span><span id="hudWeapon"></span></div>
+      <div class="reload" id="reloadWrap"><i id="reloadFill"></i></div>
+    </div>
+    <div class="hint" id="hint">WASD 移动 · 鼠标瞄准 · 左键射击 · R 换弹 · 空格冲刺 · P 暂停</div>
+  </div>
+
+  <!-- ================= 波次过渡画面 ================= -->
+  <div id="inter">
+    <div class="in-box">
+      <div class="in-warn">⚠️ 敌人变强了</div>
+      <div class="in-title">敌人血量 +10%</div>
+      <div class="in-sub">累计 +10%</div>
+      <div class="in-extra">本波敌人 26 只</div>
+      <div class="in-bar"><i></i></div>
+    </div>
+  </div>
+
+  <!-- ================= 页面 ================= -->
+  <div id="overlay">
+    <!-- 主页面 -->
+    <section class="screen" id="scrMenu">
+      <div class="menu-grid">
+        <div class="menu-left">
+          <h1>方块枪神<span>2D</span></h1>
+          <p class="sub">你是方块，敌人也是方块。<br>拿起手枪，把它们全部打成碎片。</p>
+          <div class="menu-btns">
+            <button class="btn big" data-act="levels">▶ 开 始 游 戏</button>
+            <div class="btn-note">战役关卡 · 8 关剧情挑战</div>
+            <button class="btn big diff" data-act="diff">🔥 难 度 关 卡</button>
+            <div class="btn-note">无限关卡 · 4 档难度 · 敌人开外挂</div>
+            <button class="btn big br" data-act="br">🪂 大逃杀</button>
+            <div class="btn-note">超大战场 · 杀光所有敌人 · 房屋捡枪</div>
+                        <button class="btn big net" data-act="net">🌐 联 机 合 作</button>
+            <div class="btn-note">局域网 / 内网穿透 · 2-4 人合作</div><button class="btn big ghost" data-act="shop">🛒 装 备 商 店</button>
+            <div class="btn-note">强化手枪 · 购买皮肤技能</div>
+            <button class="btn big book" data-act="book">📖 怪 物 图 鉴</button>
+            <div class="btn-note" id="menuDexNote">收录进度 0 / 0</div>
+          </div>
+        </div>
+        <div class="menu-right">
+          <div class="panel">
+            <div class="panel-title">📊 我的数据</div>
+            <div class="menu-stats" id="menuStats"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">🏆 难度关卡纪录</div>
+            <div class="menu-endless" id="menuEndless"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">🪂 大逃杀战绩</div>
+            <div class="menu-br" id="menuBR"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">🎮 操作说明</div>
+            <div class="keys">
+              <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>移动</span></div>
+              <div><kbd>鼠标</kbd><span>瞄准 / 左键射击</span></div>
+              <div><kbd>R</kbd><span>换弹</span></div>
+              <div><kbd>空格</kbd><span>冲刺（无敌）</span></div>
+              <div><kbd>P</kbd><span>暂停</span></div>
+              <div><kbd>M</kbd><span>静音</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 关卡页面 -->
+    <section class="screen" id="scrLevels">
+      <div class="bar-top">
+        <button class="btn tiny ghost" data-act="menu">← 返回主页面</button>
+        <div class="bar-title">战役关卡</div>
+        <div class="bar-right" id="lvTop"></div>
+      </div>
+      <div class="scroll">
+        <div class="grid-lv" id="lvGrid"></div>
+      </div>
+    </section>
+
+    <!-- 难度页面 -->
+    <section class="screen" id="scrDiff">
+      <div class="bar-top">
+        <button class="btn tiny ghost" data-act="menu">← 返回主页面</button>
+        <div class="bar-title">难度关卡 · 无限挑战</div>
+        <div class="bar-right"><span class="coin-chip">🪙 <b class="coin-num">0</b></span></div>
+      </div>
+      <div class="df-wrap">
+        <div class="df-grid" id="dfGrid"></div>
+        <div class="df-side">
+          <div class="dd" id="dfDetail"></div>
+          <button class="btn big diff" data-act="play-tier">开 始 挑 战</button>
+          <div class="btn-note">先点选难度档 · 死了就结束</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 大逃杀 -->
+    <section class="screen" id="scrBR">
+      <div class="bar-top">
+        <button class="btn tiny ghost" data-act="menu">← 返回主页面</button>
+        <div class="bar-title">大逃杀 · 空降战场</div>
+        <div class="bar-right"><span class="coin-chip">🪙 <b class="coin-num">0</b></span></div>
+      </div>
+      <div class="br-body">
+        <div class="br-grid" id="brGrid"></div>
+        <div class="dd br-detail" id="brDetail"></div>
+        <div class="br-start">
+          <button class="btn big br" data-act="start-br">🪂 开 始 空 降</button>
+          <div class="btn-note">开局只有小手枪 · 杀光所有敌人即可吃鸡</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 商店 -->
+    <section class="screen" id="scrShop">
+      <div class="bar-top">
+        <button class="btn tiny ghost" data-act="menu">← 返回主页面</button>
+        <div class="bar-title">装备商店</div>
+        <div class="bar-right"></div>
+      </div>
+      <div class="shop-tabs" id="shopTabs"></div>
+      <div class="scroll" id="shopBody"></div>
+    </section>
+
+    <!-- 怪物图鉴 -->
+    <section class="screen" id="scrBook">
+      <div class="bar-top">
+        <button class="btn tiny ghost" data-act="menu">← 返回主页面</button>
+        <div class="bar-title">怪物图鉴</div>
+        <div class="bar-right">
+          <span class="chip" id="bookChip"><span class="ico">📖</span><b id="bookChipTxt">0 / 0</b></span>
+          <span class="coin-chip">🪙 <b class="coin-num">0</b></span>
+        </div>
+      </div>
+      <div class="book-head">
+        <div class="book-tabs" id="bookTabs">
+          <button class="tab on" id="bookTabAll" data-act="book-filter" data-id="all">全部</button>
+          <button class="tab" id="bookTabOwn" data-act="book-filter" data-id="own">已收录</button>
+          <button class="tab" id="bookTabLock" data-act="book-filter" data-id="lock">未收录</button>
+        </div>
+        <div class="book-progress">
+          <div class="bp-text"><span>收录进度</span><b id="bookProgTxt">已收录 0 / 0</b></div>
+          <div class="bp-bar"><i id="bookProgFill"></i></div>
+        </div>
+      </div>
+      <div class="scroll book-scroll" id="bookScroll">
+        <div class="grid-dex" id="bookGrid"></div>
+      </div>
+    </section>
+
+    <!-- 暂停 -->
+        <!-- 联机合作 -->
+    <section class="screen" id="scrNet">
+      <div class="bar-top">
+        <button class="btn tiny ghost" data-act="menu">← 返回主页面</button>
+        <div class="bar-title">联机 · 合作闯关</div>
+        <div class="bar-right"><span class="chip" id="netPingChip"><span class="ico">📶</span><b id="netPingTop">--</b></span></div>
+      </div>
+      <div class="net-body">
+        <div class="panel net-form" id="netForm">
+          <div class="net-field">
+            <label for="netUrl">服务器地址</label>
+            <input class="net-input" id="netUrl" type="text" autocomplete="off" spellcheck="false" placeholder="自动：ws://192.168.1.5:8080/ws">
+            <p class="net-hint">留空 = 自动使用当前网页地址；手机联机请填电脑的局域网 IP（先在电脑上运行服务端）。</p>
+          </div>
+          <div class="net-field">
+            <label for="netName">昵称</label>
+            <input class="net-input" id="netName" type="text" maxlength="10" autocomplete="off" placeholder="方块战士">
+          </div>
+          <div class="net-row">
+            <div class="net-field">
+              <label for="netCode">房间码</label>
+              <input class="net-input code" id="netCode" type="text" maxlength="4" autocomplete="off" spellcheck="false" placeholder="例如 ABCD">
+            </div>
+            <div class="net-actions">
+              <button class="btn big net-create" data-act="net-create">➕ 创建房间</button>
+              <button class="btn big net-join" data-act="net-join">🔗 加入房间</button>
+            </div>
+          </div>
+        </div>
+        <div class="panel net-room" id="netRoom">
+          <div class="net-room-top">
+            <div class="net-code-wrap" data-act="net-copy" title="点击复制房间码">
+              <span class="net-code-label">房 间 码</span>
+              <div class="net-code" id="netRoomCode">----</div>
+              <span class="net-code-copy">📋 点击复制</span>
+            </div>
+            <div class="net-room-meta">
+              <div class="net-meta-row"><span>人数</span><b id="netPlayerCount">1 / 6 人</b></div>
+              <div class="net-meta-row"><span>延迟</span><b id="netRoomPing">--</b></div>
+              <div class="net-meta-row"><span>角色</span><b id="netRoleTxt">--</b></div>
+            </div>
+          </div>
+          <div class="net-players" id="netPlayers"></div>
+          <div class="net-room-actions">
+            <button class="btn big net-ready hide" id="netReadyBtn" data-act="net-ready">✅ 我准备好了</button>
+            <div class="net-host-box hide" id="netHostBox">
+              <div class="net-modes" id="netModes">
+                <button class="net-mode on" data-act="net-mode" data-id="campaign">🏁 合作战役</button>
+                <button class="net-mode" data-act="net-mode" data-id="endless">🔥 合作难度</button>
+              </div>
+              <div class="net-mode-row">
+                <label class="net-mode-field" id="netLevelWrap">关卡<select id="netLevel"></select></label>
+                <label class="net-mode-field hide" id="netTierWrap">难度<select id="netTier"></select></label>
+              </div>
+              <button class="btn big net-start" id="netStartBtn" data-act="net-start">🚀 开始游戏</button>
+              <p class="net-hint" id="netRoomCfg"></p>
+            </div>
+            <p class="net-hint" id="netGuestNote">等待房主选择模式并开始游戏…准备好了先点上面的按钮。</p>
+            <button class="btn tiny ghost" data-act="net-leave">断开连接 / 退出房间</button>
+          </div>
+        </div>
+        <div class="net-status" id="netStatus">● 未连接</div>
+      </div>
+    </section>
+<section class="screen" id="scrPause">
+      <div class="pause-box">
+        <h2>已 暂 停</h2>
+        <p class="sub">喘口气，方块不会跑远。</p>
+        <div class="btns col">
+          <button class="btn" data-act="resume">继续战斗</button>
+          <button class="btn ghost" data-act="quit">退出本局</button>
+          <button class="btn ghost" data-act="menu">回到主页面</button>
+        </div>
+        <p class="tip">按 P / Esc 也可以继续</p>
+      </div>
+    </section>
+
+    <!-- 结算 -->
+    <section class="screen" id="scrResult">
+      <div class="result-box" id="resBody"></div>
+    </section>
+  </div>
+
+  <!-- ================= 触屏 ================= -->
+  <div id="touch">
+    <div id="joy"><i id="knob"></i></div>
+    <div class="tbtns">
+      <button class="tbtn small" id="btnReload">换弹</button>
+      <button class="tbtn small" id="btnDash">冲刺</button>
+      <button class="tbtn fire" id="btnFire">射击</button>
+    </div>
+  </div>
+
+  <button id="btnFull" type="button" title="全屏">⛶</button>
+
+  <!-- 竖屏提示（仅触屏 + 竖屏时显示） -->
+  <div id="rotate">
+    <div class="rotate-box">
+      <div class="rot-ico">📱↔️</div>
+      <h2>请旋转手机横屏游玩</h2>
+      <p>横屏才能看清整个战场</p>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/levels100.js"></script>
+<script src="js/net.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  Game.init();
+  UI.init();
+</script>
+</body>
+</html>

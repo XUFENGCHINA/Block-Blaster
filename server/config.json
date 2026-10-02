@@ -1,0 +1,17 @@
+{
+  "port": 8080,
+  "host": "0.0.0.0",
+  "maxPlayers": 6,
+  "maxRooms": 200,
+  "publicUrl": "",
+  "tunnel": {
+    "provider": "none",
+    "note": "把公网地址填到 publicUrl，例如 https://xxxx.ngrok-free.app（不要带结尾斜杠）"
+  },
+  "heartbeat": {
+    "idleMs": 30000,
+    "pongTimeoutMs": 60000,
+    "tickMs": 5000
+  },
+  "maxMessageBytes": 2097152
+}

@@ -1,0 +1,108 @@
+{
+  "generatedAt": "2026-10-02T13:03:11.130Z",
+  "port": 62415,
+  "results": [
+    {
+      "id": "S1",
+      "name": "服务端启动 + GET /index.html 200",
+      "status": "PASS",
+      "detail": "端口 62415"
+    },
+    {
+      "id": "S2",
+      "name": "静态页含 方块枪神",
+      "status": "PASS",
+      "detail": "status=200 len=12532"
+    },
+    {
+      "id": "S3",
+      "name": "静态资源 /js/game.js 200",
+      "status": "PASS",
+      "detail": "status=200"
+    },
+    {
+      "id": "S4",
+      "name": "3 个 WebSocket 客户端连接 /ws",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S5",
+      "name": "create 建房：4 位房间码 + host 标记 + 1 名玩家",
+      "status": "PASS",
+      "detail": "code=FWCN"
+    },
+    {
+      "id": "S6",
+      "name": "join 加入：host=false + 玩家列表 2 人",
+      "status": "PASS",
+      "detail": "players=2"
+    },
+    {
+      "id": "S7",
+      "name": "peer join 广播到房主",
+      "status": "PASS",
+      "detail": "name=队友2"
+    },
+    {
+      "id": "S8",
+      "name": "第 3 人加入后房间 3 人",
+      "status": "PASS",
+      "detail": "players=3"
+    },
+    {
+      "id": "S9",
+      "name": "relay 双向到达其他两人，不回发给发送者",
+      "status": "PASS",
+      "detail": "from=p6cafb32a"
+    },
+    {
+      "id": "S10",
+      "name": "ready 事件广播（ready=true）",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S11",
+      "name": "start 广播给 3 人且带 config",
+      "status": "PASS",
+      "detail": "{\"mode\":\"campaign\",\"level\":1}"
+    },
+    {
+      "id": "S12",
+      "name": "ping->pong 原样返回 ts",
+      "status": "PASS",
+      "detail": "ts=12345"
+    },
+    {
+      "id": "S13",
+      "name": "非法消息回 err 且服务端不崩",
+      "status": "PASS",
+      "detail": "未知消息类型：not-a-real-type"
+    },
+    {
+      "id": "S14",
+      "name": "非法消息后连接仍可用",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S15",
+      "name": "leave 后 peer leave 广播 + 房间清理",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S16",
+      "name": "房主断开后房间解散/残留客户端被清理",
+      "status": "PASS",
+      "detail": "broadcast"
+    },
+    {
+      "id": "S17",
+      "name": "联机测试后静态托管仍正常",
+      "status": "PASS",
+      "detail": ""
+    }
+  ]
+}

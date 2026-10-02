@@ -1,0 +1,59 @@
+{
+  "generatedAt": "2026-10-02T13:03:54.091Z",
+  "results": [
+    {
+      "id": "E1",
+      "name": "真实服务端启动（静态页 200）",
+      "status": "PASS",
+      "detail": "port=64563"
+    },
+    {
+      "id": "E2",
+      "name": "host 创建房间并获得房间码",
+      "status": "PASS",
+      "detail": "code=26HB"
+    },
+    {
+      "id": "E3",
+      "name": "client 加入后 host 房间 2 人",
+      "status": "PASS",
+      "detail": "{\"players\":2,\"host\":true,\"clientHas\":true}"
+    },
+    {
+      "id": "E4",
+      "name": "host 开局后 host=playing/host 角色",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "E5",
+      "name": "client 收到 start 后 client=playing/client 角色",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "E6",
+      "name": "host 侧 remotes=1 且 netHud 显示",
+      "status": "PASS",
+      "detail": "{\"role\":\"host\",\"remotes\":1,\"hud\":true}"
+    },
+    {
+      "id": "E7",
+      "name": "client 侧重建远程玩家且 netHud 显示",
+      "status": "PASS",
+      "detail": "{\"role\":\"client\",\"remotes\":1,\"hud\":true}"
+    },
+    {
+      "id": "E8",
+      "name": "双端无 JS 运行时错误",
+      "status": "PASS",
+      "detail": "host=[] client=[]"
+    },
+    {
+      "id": "E9",
+      "name": "file:// 下 Net.available()===false 且 status===off、无报错",
+      "status": "PASS",
+      "detail": "{\"available\":false,\"status\":\"off\",\"hint\":true} errs=[]"
+    }
+  ]
+}
