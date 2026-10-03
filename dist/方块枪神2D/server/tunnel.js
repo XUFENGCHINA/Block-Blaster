@@ -747,6 +747,15 @@ class TunnelManager {
 
   async _tryTools(forcedTool, gen) {
     let tools = detectTools();
+    const frpPlan = resolveFrpcPlan(this.frp);
+    // 即使 frpc 二进制不在 PATH，只要 server/frpc.toml(.ini) 存在也要尝试一次，便于给出明确指引
+    if (frpPlan.configPath && !tools.some(function (t) { return t.name === 'frpc'; })) {
+      tools.push({ name: 'frpc', path: frpPlan.configPath, label: TOOL_DEFS.frpc.label, configOnly: !frpPlan.bin });
+    }
+    // 用户明确放了 frpc.toml（平台配置），优先于 cloudflared / ngrok
+    if (!forcedTool && frpPlan.mode === 'toml') {
+      tools.sort(function (a, b) { return a.name === 'frpc' ? -1 : (b.name === 'frpc' ? 1 : 0); });
+    }
     if (forcedTool) {
       tools = tools.filter(function (t) { return t.name === forcedTool; });
       if (!tools.length) {
@@ -762,35 +771,57 @@ class TunnelManager {
 
     for (const tool of tools) {
       if (this._stopped || gen !== this._generation) return false;
-      this.log('检测到 ' + tool.name + '：' + tool.path);
-      const ok = await this._startToolProcess(tool.name, gen);
+      this.log('检测到 ' + tool.name + (tool.configOnly ? '（只有配置文件，未找到可执行文件）' : '') + '：' + tool.path);
+      const ok = tool.name === 'frpc' ? await this._startFrpcTool(gen) : await this._startToolProcess(tool.name, gen);
       if (ok) return true;
     }
     return false;
   }
 
   _startToolProcess(name, gen) {
-    const self = this;
     const def = TOOL_DEFS[name];
+    const bin = findTool(name);
+    if (!bin) {
+      this.log('找不到 ' + name + ' 可执行文件。');
+      return Promise.resolve(false);
+    }
+    let args = [];
+    try { args = def.args(this.port); } catch (e) { args = []; }
+    const self = this;
+    return this._spawnTool({
+      name: name,
+      bin: bin,
+      args: args,
+      label: def.label,
+      gen: gen,
+      fallbackUrl: name === 'frpc' ? parseFrpcIniUrl(bin) : null,
+      fallbackDelayMs: 1200,
+      restart: function () { return self._startToolProcess(name, gen); }
+    });
+  }
+
+  /* 通用子进程启动：抓 URL / 配置兜底地址 / keepAlive / 退出处理 */
+  _spawnTool(config) {
+    const self = this;
+    const cfg = config || {};
+    const name = cfg.name || 'tunnel';
+    const label = cfg.label || name;
     return new Promise(function (resolve) {
-      const bin = findTool(name);
-      if (!bin) {
-        self.log('找不到 ' + name + ' 可执行文件。');
+      if (!cfg.bin) {
+        self.log(label + '：找不到可执行文件。');
         resolve(false);
         return;
       }
-      let args = [];
-      try { args = def.args(self.port); } catch (e) { args = []; }
       self.provider = name;
       self.state = 'starting';
-      self.log('正在启动 ' + def.label + ' …');
-      self.log('命令：' + bin + ' ' + args.join(' '));
+      self.log('正在启动 ' + label + ' …');
+      self.log('命令：' + cfg.bin + ' ' + (cfg.args || []).join(' '));
 
       let child;
       try {
-        child = spawnToolProcess(name, bin, self.port);
+        child = spawnCommand(cfg.bin, cfg.args || [], cfg.cwd);
       } catch (e) {
-        self.log(def.label + ' 启动失败：' + e.message);
+        self.log(label + ' 启动失败：' + e.message);
         resolve(false);
         return;
       }
@@ -801,22 +832,25 @@ class TunnelManager {
       let settled = false;
       let buffer = '';
       let urlTimer = null;
+      let fallbackTimer = null;
 
       function finish(ok, url, message) {
         if (settled) return;
         settled = true;
         if (urlTimer) clearTimeout(urlTimer);
+        if (fallbackTimer) clearTimeout(fallbackTimer);
         if (ok) {
           self.setPublic({ url: url, method: name, ok: true });
           self.state = 'running';
           if (self.writeConfig && writeConfigPublicUrl(self.configPath, url, name)) {
             self.log('已把公网地址写回 server/config.json 的 publicUrl。');
           }
-          self.log(def.label + ' 已就绪：' + url);
+          self.log(label + ' 已就绪：' + url);
+          if (cfg.fallbackUsed) self.log('提示：如果平台给了独立自定义域名，请手动改 server/config.json 的 publicUrl。');
           self.log('分享给朋友：' + url + '/#join=房间码');
           resolve(true);
         } else {
-          self.log(def.label + ' 失败：' + message);
+          self.log(label + ' 失败：' + message);
           resolve(false);
         }
       }
@@ -827,7 +861,7 @@ class TunnelManager {
         for (const rawLine of text.split(/\r?\n/)) {
           const s = rawLine.trim();
           if (!s) continue;
-          if (/trycloudflare\.com|ngrok|Forwarding|started tunnel|Registered tunnel|Error|ERR|fatal|failed|错误|失败/i.test(s)) {
+          if (/trycloudflare\.com|ngrok|Forwarding|started tunnel|Registered tunnel|start proxy|success|Error|ERR|fatal|failed|错误|失败/i.test(s)) {
             self.log('[' + name + '] ' + s.slice(0, 300));
           }
         }
@@ -851,15 +885,16 @@ class TunnelManager {
           finish(false, null, '提前退出（code=' + code + (signal ? ', signal=' + signal : '') + '）' + (tail ? '；最后输出：' + tail : ''));
           return;
         }
-        if (self._stopped || gen !== self._generation) return;
+        if (self._stopped || cfg.gen !== self._generation) return;
         const uptime = Date.now() - self.childStartedAt;
-        self.log(def.label + ' 进程已退出（code=' + code + (signal ? ', signal=' + signal : '') + '）。');
+        self.log(label + ' 进程已退出（code=' + code + (signal ? ', signal=' + signal : '') + '）。');
         if (self.keepAlive && uptime > 5000 && self.childRestarts < 2) {
           self.childRestarts++;
           self.log('keepAlive 生效：2 秒后自动重启（第 ' + self.childRestarts + ' 次）…');
           setTimeout(function () {
-            if (self._stopped || gen !== self._generation) return;
-            self._startToolProcess(name, gen).then(function (ok) {
+            if (self._stopped || cfg.gen !== self._generation) return;
+            const p = typeof cfg.restart === 'function' ? cfg.restart() : self._startToolProcess(name, cfg.gen);
+            Promise.resolve(p).then(function (ok) {
               if (!ok) {
                 self.state = 'failed';
                 self.log('自动重启失败，隧道已断开。');
@@ -878,21 +913,126 @@ class TunnelManager {
         self._killChild(child);
       }, self.urlTimeoutMs);
 
-      if (name === 'frpc') {
-        const iniUrl = parseFrpcIniUrl(bin);
-        if (iniUrl) {
-          setTimeout(function () { if (!settled) finish(true, iniUrl, ''); }, 1200);
-        }
+      // 配置兜底地址：延迟一点，优先等 stdout 里的 URL
+      if (cfg.fallbackUrl) {
+        fallbackTimer = setTimeout(function () {
+          if (settled) return;
+          cfg.fallbackUsed = true;
+          self.log('未从输出抓到 URL，改用配置推导的地址：' + cfg.fallbackUrl);
+          finish(true, cfg.fallbackUrl, '');
+        }, cfg.fallbackDelayMs || 1500);
       }
     });
   }
+  /* frpc：优先 server/frpc.toml，其次 server/frpc.ini，最后 PATH 里的 frpc */
+  _startFrpcTool(gen) {
+    const plan = resolveFrpcPlan(this.frp);
+    const self = this;
+    if (!plan.mode) {
+      this.log('未找到 server/frpc.toml、server/frpc.ini，也没有 PATH 里的 frpc。');
+      this.log(TOOL_DEFS.frpc.installHint);
+      return Promise.resolve(false);
+    }
+    if (!plan.bin) {
+      const which = plan.mode === 'toml' ? 'server/frpc.toml' : 'server/frpc.ini';
+      this.log('发现 ' + which + '，但没有找到 frpc 可执行文件。');
+      this.log('请安装 frpc（放到 PATH 或 C:\\frp\\），配置已就绪，装好后重跑服务端即可。');
+      this.log('排查：确认配置里 localPort = ' + this.port + '（游戏端口）、remotePort 与平台隧道一致。');
+      return Promise.resolve(false);
+    }
 
+    if (plan.mode === 'toml') {
+      let text = '';
+      try { text = fs.readFileSync(plan.configPath, 'utf8'); } catch (e) {
+        this.log('读取 frpc.toml 失败：' + e.message);
+        return Promise.resolve(false);
+      }
+      const info = parseFrpcToml(text);
+      if (!info.ok || !info.serverAddr) {
+        this.log('frpc.toml 解析失败或缺少 serverAddr，请检查文件格式：' + plan.configPath);
+        return Promise.resolve(false);
+      }
+      this.log('frp 配置：' + describeFrpcToml(info));
+      if (!info.remotePort) this.log('提醒：frpc.toml 里没有 remotePort；请与平台隧道配置核对（remotePort 必须与平台一致）。');
+
+      const canFix = this.frp.autoFixLocalPort && !this.frp.noFix;
+      if (canFix) {
+        const fix = fixLocalPortInToml(text, this.port);
+        if (fix.changed) {
+          try {
+            fs.copyFileSync(plan.configPath, plan.configPath + '.bak');
+            fs.writeFileSync(plan.configPath, fix.text, 'utf8');
+            this.log('已自动把 frpc.toml 的 localPort 从 ' + (fix.oldPort === null ? '(缺失)' : fix.oldPort) + ' 改为游戏端口 ' + this.port + '（原文件备份：frpc.toml.bak）');
+          } catch (e) {
+            this.log('自动改写 frpc.toml 失败（继续尝试启动）：' + e.message);
+          }
+        } else {
+          this.log('frpc.toml 的 localPort = ' + (info.localPort === null || info.localPort === undefined ? '(缺失)' : info.localPort) + ' 与游戏端口一致。');
+        }
+      } else if (info.localPort !== this.port) {
+        this.log('提醒：frpc.toml 的 localPort = ' + (info.localPort === null ? '(缺失)' : info.localPort) + ' 与游戏端口 ' + this.port + ' 不一致，自动纠正已关闭（--frp-no-fix / tunnel.frp.autoFixLocalPort=false），请手动修改。');
+      }
+
+      const derived = deriveFrpPublicUrl(info, this.frp);
+      if (derived && derived.url) {
+        this.log('推导公网地址：' + derived.url + '（来源：' + derived.source + '）');
+        this.log('提示：如果平台给了独立自定义域名，请手动改 server/config.json 的 publicUrl。');
+      } else {
+        this.log('暂时无法从 frpc.toml 推导公网地址（缺少 remotePort 或 serverAddr/serverName），将等待 frpc 输出。');
+      }
+      return this._spawnTool({
+        name: 'frpc',
+        bin: plan.bin,
+        args: ['-c', plan.configPath],
+        cwd: path.dirname(plan.configPath),
+        label: 'frpc（' + path.basename(plan.configPath) + '）',
+        gen: gen,
+        fallbackUrl: derived && derived.url,
+        fallbackDelayMs: 1800,
+        restart: function () { return self._startFrpcTool(gen); }
+      });
+    }
+
+    if (plan.mode === 'ini') {
+      const iniUrl = parseFrpcIniUrl(plan.configPath);
+      this.log('使用旧版 frpc.ini 配置：' + plan.configPath);
+      if (iniUrl) this.log('从 frpc.ini 推导公网地址：' + iniUrl + '（如与平台不一致请手动改 server/config.json 的 publicUrl）');
+      else this.log('提醒：frpc.ini 里缺少 server_addr / remote_port，请与平台/自建服务配置核对。');
+      return this._spawnTool({
+        name: 'frpc',
+        bin: plan.bin,
+        args: ['-c', plan.configPath],
+        cwd: path.dirname(plan.configPath),
+        label: 'frpc（frpc.ini）',
+        gen: gen,
+        fallbackUrl: iniUrl,
+        fallbackDelayMs: 1200,
+        restart: function () { return self._startFrpcTool(gen); }
+      });
+    }
+
+    // PATH 回退：沿用旧逻辑（-c frpc.ini，工作目录 = frpc 所在目录）
+    const iniUrl = parseFrpcIniUrl(plan.bin);
+    if (iniUrl) this.log('从 frpc 同目录 frpc.ini 推导公网地址：' + iniUrl + '（如与平台不一致请手动改 server/config.json 的 publicUrl）');
+    else this.log('未找到 frpc.ini，将只依赖 frpc 输出里的公网地址。');
+    return this._spawnTool({
+      name: 'frpc',
+      bin: plan.bin,
+      args: ['-c', 'frpc.ini'],
+      cwd: path.dirname(plan.bin),
+      label: TOOL_DEFS.frpc.label,
+      gen: gen,
+      fallbackUrl: iniUrl,
+      fallbackDelayMs: 1200,
+      restart: function () { return self._startFrpcTool(gen); }
+    });
+  }
   _killChild(child) {
     if (!child || child.exitCode !== null) return;
     try { child.kill(); } catch (e) {}
     if (process.platform === 'win32' && child.pid) {
+      // cmd.exe 退出不代表 ping 等孙进程退出，必须按 PID 杀整棵进程树
       setTimeout(function () {
-        if (child.exitCode !== null) return;
         try {
           execFile('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true }, function () {});
         } catch (e) {}
@@ -947,7 +1087,15 @@ module.exports = {
   extractUrl: extractUrl,
   sanitizeUrl: sanitizeUrl,
   parseFrpcIniUrl: parseFrpcIniUrl,
+  parseFrpcToml: parseFrpcToml,
+  parseToml: parseToml,
+  describeFrpcToml: describeFrpcToml,
+  fixLocalPortInToml: fixLocalPortInToml,
+  deriveFrpPublicUrl: deriveFrpPublicUrl,
+  resolveFrpcPlan: resolveFrpcPlan,
+  maskToken: maskToken,
   writeConfigPublicUrl: writeConfigPublicUrl,
+  spawnCommand: spawnCommand,
   spawnToolProcess: spawnToolProcess,
   TunnelManager: TunnelManager
 };

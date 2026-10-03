@@ -797,6 +797,17 @@ function updateParticles(dt){
   if (G.banner){ G.banner.life -= dt; if (G.banner.life <= 0) G.banner = null; }
   if (RUN && RUN.comboT > 0){ RUN.comboT -= dt; if (RUN.comboT <= 0) RUN.combo = 0; }
 }
+/* 瞄准计算：单机 updatePlayer 与联机客户端 netTick 共用。
+   autoOnly=true 表示当前设备走自动锁头（触屏）；鼠标方向是屏幕坐标，必须加回摄像机偏移，否则大地图会瞄反。 */
+function computeAim(dt, autoOnly){
+  const p = G.player; if (!p || p.down) return;
+  const auto = !!(autoOnly || input.touchMode || !input.usedMouse);
+  const e = nearestEnemy(p.x, p.y, input.wheelAim ? 1600 : 620);
+  G.aimTarget = ((input.wheelAim || auto) && e) ? e : null;   // 锁定环目标：自动锁头 / 中键锁敌
+  if (input.wheelAim && e) p.aim = angLerp(p.aim, angTo(p.x, p.y, e.x, e.y), 1 - Math.pow(0.00000002, dt));
+  else if (auto && e) p.aim = angLerp(p.aim, angTo(p.x, p.y, e.x, e.y), 1 - Math.pow(0.0000002, dt));
+  else p.aim = angLerp(p.aim, angTo(p.x, p.y, input.mx + G.cam.x, input.my + G.cam.y), 1 - Math.pow(0.0000002, dt));
+}
 function updatePlayer(dt){
   const p = G.player, st = RUN.st;
   if (RUN.net && p.down){
@@ -804,11 +815,7 @@ function updatePlayer(dt){
     if (p.reviveT <= 0){ p.down = false; p.hp = Math.round(p.maxHp * 0.5); p.invuln = 2; burst(p.x, p.y, st.color, 20, 260); }
     return;
   }
-  const e = nearestEnemy(p.x, p.y, input.wheelAim ? 1600 : 620);
-  G.aimTarget = input.wheelAim ? e : null;
-  if (input.wheelAim && e) p.aim = angLerp(p.aim, angTo(p.x, p.y, e.x, e.y), 1 - Math.pow(0.00000002, dt));
-  else if ((input.touchMode || !input.usedMouse) && e) p.aim = angLerp(p.aim, angTo(p.x, p.y, e.x, e.y), 1 - Math.pow(0.0000002, dt));
-  else p.aim = angLerp(p.aim, angTo(p.x, p.y, input.mx + G.cam.x, input.my + G.cam.y), 1 - Math.pow(0.0000002, dt));   // 鼠标是屏幕坐标，要加回摄像机偏移
+  computeAim(dt);
   const m = moveInput();
   if (p.dashTime > 0){
     p.dashTime -= dt;
@@ -1109,7 +1116,7 @@ function stopRun(){
   G.state = 'idle';
   G.enemies.length = 0; G.bullets.length = 0; G.ebullets.length = 0; G.markers.length = 0;
   G.pickups.length = 0; G.texts.length = 0; G.boss = null; G.banner = null;
-  G.player = null; RUN = null; G.inter = null;
+  G.player = null; RUN = null; G.inter = null; G.aimTarget = null;
   hideInterstitial();
   canvas.style.cursor = '';
 }
@@ -1471,6 +1478,15 @@ function drawBanner(){
   ctx.globalAlpha = 1;
 }
 function drawCrosshair(){
+  if (G.state === 'playing' && G.aimTarget && !G.aimTarget.dead){   // 自动锁头 / 中键锁敌：幽灵敌人也显示锁定环
+    const t = G.aimTarget, sx = t.x - G.cam.x, sy = t.y - G.cam.y;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,210,74,0.95)'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.lineDashOffset = -G.bg * 30;
+    ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 10, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]); ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 15, -0.35, 0.35); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 15, Math.PI - 0.35, Math.PI + 0.35); ctx.stroke();
+    ctx.restore();
+  }
   if (G.state !== 'playing' || input.touchMode) return;
   const p = G.player; if (!p) return;
   const reloading = p.reloading > 0;
@@ -1487,15 +1503,6 @@ function drawCrosshair(){
   ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(-1.5, -1.5, 3, 3);
   ctx.restore();
-  if (input.wheelAim && G.aimTarget && !G.aimTarget.dead){
-    const t = G.aimTarget, sx = t.x - G.cam.x, sy = t.y - G.cam.y;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,210,74,0.95)'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.lineDashOffset = -G.bg * 30;
-    ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 10, 0, TAU); ctx.stroke();
-    ctx.setLineDash([]); ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 15, -0.35, 0.35); ctx.stroke();
-    ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 15, Math.PI - 0.35, Math.PI + 0.35); ctx.stroke();
-    ctx.restore();
-  }
 }
 function drawVignette(){
   const p = G.player;
@@ -1982,8 +1989,11 @@ function applySnapshot(s){
   for (let i = 0; i < s.pk.length; i++) G.pickups.push({ x: s.pk[i][0], y: s.pk[i][1], r: 13, t: 0, life: 1 });
   for (let i = 0; i < s.p.length; i++){
     const d = s.p[i], id = ids[d[0]];
-    const tgt = (id === RUN.net.myId) ? G.player : (G.remotes.filter(x => x.id === id)[0] || addRemote(id, RUN.net.names[id], RUN.net.colors[id]));
-    tgt.tx = d[1]; tgt.ty = d[2]; tgt.aim = d[3]; tgt.hp = d[4]; tgt.maxHp = d[8];
+    const isSelf = (id === RUN.net.myId);
+    const tgt = isSelf ? G.player : (G.remotes.filter(x => x.id === id)[0] || addRemote(id, RUN.net.names[id], RUN.net.colors[id]));
+    tgt.tx = d[1]; tgt.ty = d[2];
+    if (!isSelf) tgt.aim = d[3];   // 自己保留本地 computeAim 的即时朝向；快照 aim 只用于远端玩家
+    tgt.hp = d[4]; tgt.maxHp = d[8];
     tgt.down = !!d[5]; tgt.kills = d[6]; tgt.score = d[7];
     if (tgt.tx === undefined){ tgt.x = d[1]; tgt.y = d[2]; }
   }
@@ -1996,6 +2006,7 @@ function netTick(dt){
     net.snapT -= dt;
     if (net.snapT <= 0){ net.snapT = 0.1; if (EVENTS.onSnapshot) EVENTS.onSnapshot(buildSnapshot()); }
   } else {
+    computeAim(dt, input.touchMode);   // 客户端本地瞄准：触屏自动锁头 / 鼠标加摄像机偏移，然后作为 {k:'in',aim} 上报
     net.inT -= dt;
     if (net.inT <= 0 && typeof Net !== 'undefined' && Net.send){
       net.inT = 0.05;

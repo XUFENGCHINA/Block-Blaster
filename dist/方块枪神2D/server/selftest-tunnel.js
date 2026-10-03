@@ -511,6 +511,247 @@ async function stopServer(state) {
   }
 
   /* ---------------------------------------------------------- */
+  /* ---------------------------------------------------------- */
+  section('6. frpc.toml（OpenFrp/ofalias TOML）：纠正 localPort + 推导地址 + token 脱敏');
+  const secretToken = 'FAKE-SECRET-TOKEN-DO-NOT-LEAK';
+  const tomlText = function (serverName, serverAddr) {
+    return [
+      "serverAddr = '" + serverAddr + "'",
+      'serverPort = 8120',
+      "user = '42000'",
+      '[auth]',
+      "method = 'token'",
+      "token = '" + secretToken + "'",
+      '[[proxies]]',
+      "name = 'fake-proxy'",
+      "type = 'tcp'",
+      "localIP = '127.0.0.1'",
+      'localPort = 25565',
+      'remotePort = 44098',
+      'autoTLS = \'false\'',
+      '[transport]',
+      "protocol = 'tcp'",
+      '[transport.tls]',
+      'enable = true',
+      "serverName = '" + serverName + "'",
+      'disableCustomTLSFirstByte = false',
+      ''
+    ].join('\n');
+  };
+  const iniText = function (host, remotePort) {
+    return [
+      '[common]',
+      'server_addr = ' + host,
+      'server_port = 7000',
+      'token = ' + secretToken,
+      '',
+      '[block-gunner]',
+      'type = tcp',
+      'local_ip = 127.0.0.1',
+      'local_port = 8080',
+      'remote_port = ' + remotePort,
+      ''
+    ].join('\n');
+  };
+
+  const parsedToml = tunnel.parseFrpcToml(tomlText('tls.fake.openfrp.net', 'node.fake.ofalias.net'));
+  check('TOML 解析 serverAddr / serverPort / user', parsedToml.serverAddr === 'node.fake.ofalias.net' && parsedToml.serverPort === 8120 && parsedToml.user === '42000', '');
+  check('TOML 解析 [auth].token 与 [transport.tls].serverName', parsedToml.auth.token === secretToken && parsedToml.serverName === 'tls.fake.openfrp.net', '');
+  check('TOML 解析第一个 [[proxies]] 的 name/type/localPort/remotePort',
+    parsedToml.name === 'fake-proxy' && parsedToml.type === 'tcp' && parsedToml.localPort === 25565 && parsedToml.remotePort === 44098, '');
+  const fixedText = tunnel.fixLocalPortInToml(tomlText('tls.fake.openfrp.net', 'node.fake.ofalias.net'), 45678);
+  check('localPort 原地改写且保留其余内容', fixedText.changed === true && fixedText.oldPort === 25565 && fixedText.text.indexOf('localPort = 45678') >= 0 && fixedText.text.indexOf('serverAddr = ') >= 0, fixedText.line + ' 行');
+  const derived1 = tunnel.deriveFrpPublicUrl(parsedToml, {});
+  check('推导地址优先 serverName + remotePort', !!derived1 && derived1.url === 'http://tls.fake.openfrp.net:44098', derived1 && derived1.url);
+  const parsedNoName = tunnel.parseFrpcToml(tomlText('', '1.2.3.4'));
+  const derived2 = tunnel.deriveFrpPublicUrl(parsedNoName, {});
+  check('无 serverName 时回退 serverAddr + remotePort', !!derived2 && derived2.url === 'http://1.2.3.4:44098', derived2 && derived2.url);
+  const derived3 = tunnel.deriveFrpPublicUrl(parsedToml, { publicHost: 'custom.example.com', publicPort: 443 });
+  check('tunnel.frp.publicHost 优先于 serverName', !!derived3 && derived3.url === 'http://custom.example.com:443', derived3 && derived3.url);
+  check('token 脱敏函数/摘要不泄露真实 token',
+    tunnel.maskToken("token = '" + secretToken + "'").indexOf('***') >= 0 &&
+    tunnel.describeFrpcToml(parsedToml).indexOf('token = ***') >= 0 &&
+    tunnel.describeFrpcToml(parsedToml).indexOf(secretToken) < 0, '');
+
+  const frpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'bg2d-frp-selftest-'));
+  const frpBinNoUrl = path.join(frpRoot, 'bin-nourl');
+  const frpBinUrl = path.join(frpRoot, 'bin-url');
+  const cfgNoUrl = path.join(frpRoot, 'cfg-nourl');
+  const cfgUrlDir = path.join(frpRoot, 'cfg-url');
+  const cfgIni = path.join(frpRoot, 'cfg-ini');
+  const cfgEmpty = path.join(frpRoot, 'cfg-empty');
+  [frpBinNoUrl, frpBinUrl, cfgNoUrl, cfgUrlDir, cfgIni, cfgEmpty].forEach(function (d) { fs.mkdirSync(d, { recursive: true }); });
+  const writeFakeFrpc = function (dir, withUrl) {
+    if (process.platform === 'win32') {
+      const lines = ['@echo off', 'echo 2024-01-01 INFO start proxy success'];
+      if (withUrl) lines.push('echo https://stdout.fake.example.com');
+      lines.push('ping -n 30 127.0.0.1 >nul', '');
+      fs.writeFileSync(path.join(dir, 'frpc.cmd'), lines.join('\r\n'), 'utf8');
+    } else {
+      const lines = ['#!/bin/sh', 'echo "2024-01-01 INFO start proxy success"'];
+      if (withUrl) lines.push('echo "https://stdout.fake.example.com"');
+      lines.push('sleep 30', '');
+      const p = path.join(dir, 'frpc');
+      fs.writeFileSync(p, lines.join('\n'), 'utf8');
+      fs.chmodSync(p, 0o755);
+    }
+  };
+  writeFakeFrpc(frpBinNoUrl, false);
+  writeFakeFrpc(frpBinUrl, true);
+  fs.writeFileSync(path.join(cfgNoUrl, 'frpc.toml'), tomlText('custom.fake.openfrp.net', 'node.fake.ofalias.net'), 'utf8');
+  fs.writeFileSync(path.join(cfgUrlDir, 'frpc.toml'), tomlText('custom2.fake.openfrp.net', 'node2.fake.ofalias.net'), 'utf8');
+  fs.writeFileSync(path.join(cfgIni, 'frpc.ini'), iniText('ini.fake.example.net', 44099), 'utf8');
+  fs.writeFileSync(path.join(frpBinNoUrl, 'frpc.ini'), iniText('path.fake.example.net', 44100), 'utf8');
+
+  const basePath = process.env.PATH;
+  const mkCfg = function (name) {
+    const p = path.join(frpRoot, name);
+    fs.writeFileSync(p, JSON.stringify({ port: 45678, publicUrl: '', tunnel: { auto: true, prefer: 'upnp', externalPort: 0, keepAlive: true, frp: { configFile: 'frpc.toml', autoFixLocalPort: true, publicHost: '', publicPort: 0 } } }, null, 2), 'utf8');
+    return p;
+  };
+
+  // ① 假 toml：localPort 故意写错 + 假 token，验证自动纠正 / 推导 / 脱敏
+  process.env.PATH = frpBinNoUrl + path.delimiter + basePath;
+  const cfgA2 = mkCfg('config-a.json');
+  const logsA2 = [];
+  const mgrA2 = new tunnel.TunnelManager({
+    port: 45678, configPath: cfgA2, keepAlive: false, urlTimeoutMs: 8000,
+    frp: { configDir: cfgNoUrl, configFile: 'frpc.toml', autoFixLocalPort: true, publicHost: '', publicPort: 0 },
+    onLog: function (l) { logsA2.push(l); }
+  });
+  const rA2 = await mgrA2.start({ mode: 'auto', tool: 'frpc' });
+  const fixedA = fs.readFileSync(path.join(cfgNoUrl, 'frpc.toml'), 'utf8');
+  check('① 假 toml：localPort 25565 自动纠正为实际端口 45678', fixedA.indexOf('localPort = 45678') >= 0, '');
+  check('① 改前已备份 frpc.toml.bak（保留 25565）',
+    fs.existsSync(path.join(cfgNoUrl, 'frpc.toml.bak')) && fs.readFileSync(path.join(cfgNoUrl, 'frpc.toml.bak'), 'utf8').indexOf('localPort = 25565') >= 0, '');
+  check('① 启动成功并推导公网地址（serverName + remotePort）',
+    rA2 && rA2.ok === true && rA2.url === 'http://custom.fake.openfrp.net:44098',
+    JSON.stringify(rA2 && { ok: rA2.ok, url: rA2.url, provider: rA2.provider }));
+  check('① config.json.publicUrl 写回推导地址',
+    JSON.parse(fs.readFileSync(cfgA2, 'utf8')).publicUrl === 'http://custom.fake.openfrp.net:44098', '');
+  check('① 日志 token 脱敏为 token = *** 且不含真实 token',
+    logsA2.some(function (l) { return l.indexOf('token = ***') >= 0; }) &&
+    !logsA2.some(function (l) { return l.indexOf(secretToken) >= 0; }),
+    (logsA2.filter(function (l) { return l.indexOf('token') >= 0; })[0] || '').slice(0, 220));
+  check('① 日志说明 localPort 已自动纠正', logsA2.some(function (l) { return /自动把 frpc\.toml 的 localPort/.test(l); }), '');
+  await mgrA2.stop('selftest-toml-a');
+
+  // ①b stdout 有域名时优先于配置推导
+  process.env.PATH = frpBinUrl + path.delimiter + basePath;
+  const cfgB2 = mkCfg('config-b.json');
+  const mgrB2 = new tunnel.TunnelManager({
+    port: 45678, configPath: cfgB2, keepAlive: false, urlTimeoutMs: 8000,
+    frp: { configDir: cfgUrlDir, configFile: 'frpc.toml', autoFixLocalPort: true, publicHost: '', publicPort: 0 },
+    onLog: function () {}
+  });
+  const rB2 = await mgrB2.start({ mode: 'auto', tool: 'frpc' });
+  check('① stdout 打印域名时优先抓 stdout（优先于配置推导）',
+    rB2 && rB2.ok === true && rB2.url === 'https://stdout.fake.example.com', JSON.stringify(rB2 && { ok: rB2.ok, url: rB2.url }));
+  await mgrB2.stop('selftest-toml-b');
+  // ② 无 toml 时回退旧版 frpc.ini（不回归）
+  process.env.PATH = frpBinNoUrl + path.delimiter + basePath;
+  const cfgC2 = mkCfg('config-c.json');
+  const mgrC2 = new tunnel.TunnelManager({
+    port: 45678, configPath: cfgC2, keepAlive: false, urlTimeoutMs: 8000,
+    frp: { configDir: cfgIni, configFile: 'frpc.toml', autoFixLocalPort: true, publicHost: '', publicPort: 0 },
+    onLog: function () {}
+  });
+  const rC2 = await mgrC2.start({ mode: 'auto', tool: 'frpc' });
+  check('② 无 toml 时回退 frpc.ini 并推导地址（旧逻辑不回归）',
+    rC2 && rC2.ok === true && rC2.url === 'http://ini.fake.example.net:44099', JSON.stringify(rC2 && { ok: rC2.ok, url: rC2.url }));
+  check('② ini 模式不会生成 frpc.toml.bak', !fs.existsSync(path.join(cfgIni, 'frpc.toml.bak')), '');
+  await mgrC2.stop('selftest-ini');
+
+  // ②b 没有 toml / ini：回退 PATH 里的 frpc，并用 frpc 同目录 frpc.ini 推导
+  const cfgD2 = mkCfg('config-d.json');
+  const mgrD2 = new tunnel.TunnelManager({
+    port: 45678, configPath: cfgD2, keepAlive: false, urlTimeoutMs: 8000,
+    frp: { configDir: cfgEmpty, configFile: 'frpc.toml', autoFixLocalPort: true, publicHost: '', publicPort: 0 },
+    onLog: function () {}
+  });
+  const rD2 = await mgrD2.start({ mode: 'auto', tool: 'frpc' });
+  check('② 无 toml/ini 时回退 PATH 里的 frpc（同目录 frpc.ini 推导地址）',
+    rD2 && rD2.ok === true && rD2.url === 'http://path.fake.example.net:44100', JSON.stringify(rD2 && { ok: rD2.ok, url: rD2.url }));
+  await mgrD2.stop('selftest-path');
+
+  // ②c --frp-no-fix / tunnel.frp.autoFixLocalPort=false 时不改动文件
+  const cfgNoFix = path.join(frpRoot, 'cfg-nofix');
+  fs.mkdirSync(cfgNoFix, { recursive: true });
+  fs.writeFileSync(path.join(cfgNoFix, 'frpc.toml'), tomlText('nofix.fake.openfrp.net', 'node.fake.ofalias.net'), 'utf8');
+  const mgrNoFix = new tunnel.TunnelManager({
+    port: 45678, configPath: mkCfg('config-nofix.json'), keepAlive: false, urlTimeoutMs: 8000,
+    frp: { configDir: cfgNoFix, configFile: 'frpc.toml', autoFixLocalPort: false, publicHost: '', publicPort: 0, noFix: true },
+    onLog: function () {}
+  });
+  const rNoFix = await mgrNoFix.start({ mode: 'auto', tool: 'frpc' });
+  const noFixText = fs.readFileSync(path.join(cfgNoFix, 'frpc.toml'), 'utf8');
+  check('② --frp-no-fix 关闭自动纠正：localPort 保持 25565 且无 .bak',
+    rNoFix && rNoFix.ok === true && noFixText.indexOf('localPort = 25565') >= 0 && !fs.existsSync(path.join(cfgNoFix, 'frpc.toml.bak')), JSON.stringify(rNoFix && { ok: rNoFix.ok, url: rNoFix.url }));
+  await mgrNoFix.stop('selftest-nofix');
+
+  // ③ 真实服务端 + server/frpc.toml：/netinfo.public.url 与推导值一致
+  const realToml = path.join(ROOT, 'frpc.toml');
+  const realBak = realToml + '.bak';
+  const hadToml = fs.existsSync(realToml);
+  const backToml = hadToml ? fs.readFileSync(realToml) : null;
+  const hadBak = fs.existsSync(realBak);
+  const backBak = hadBak ? fs.readFileSync(realBak) : null;
+  const realCfgPath2 = path.join(ROOT, 'config.json');
+  const backRealCfg = fs.readFileSync(realCfgPath2);
+  let serverE = null;
+  try {
+    fs.writeFileSync(realToml, tomlText('integ.fake.openfrp.net', 'node.integ.ofalias.net'), 'utf8');
+    try { fs.unlinkSync(realBak); } catch (e) {}
+    const portE = await freeTcpPort();
+    serverE = spawnServer(portE, ['--tunnel=off', '--tunnel-tool=frpc'], {
+      PATH: frpBinNoUrl + path.delimiter + process.env.PATH,
+      BG_TUNNEL_URL_TIMEOUT_MS: '8000'
+    });
+    const healthyE = await waitFor(async function () {
+      const r = await httpRequest({ port: portE, path: '/healthz', timeout: 500 });
+      return r.status === 200 && r.json && r.json.ok === true;
+    }, 6000, 150);
+    check('③ 真实服务端启动并读取 server/frpc.toml', healthyE === true, 'port=' + portE);
+
+    const startE = await httpRequest({ port: portE, path: '/tunnel/start', method: 'POST', body: '{}', timeout: 12000, headers: { 'Content-Type': 'application/json' } });
+    check('③ POST /tunnel/start 启动 frpc 并返回推导的公网地址',
+      startE.status === 200 && startE.json && startE.json.ok === true && startE.json.url === 'http://integ.fake.openfrp.net:44098',
+      JSON.stringify(startE.json && { ok: startE.json.ok, url: startE.json.url }));
+
+    const niE = (await httpRequest({ port: portE, path: '/netinfo', timeout: 2000 })).json;
+    check('③ /netinfo.public.url 与推导值一致（method=frpc, ok=true）',
+      niE && niE.public && niE.public.url === 'http://integ.fake.openfrp.net:44098' && niE.public.method === 'frpc' && niE.public.ok === true,
+      JSON.stringify(niE && niE.public));
+
+    const fixedInteg = fs.readFileSync(realToml, 'utf8');
+    check('③ server/frpc.toml 的 localPort 已纠正为服务端实际端口并备份 .bak',
+      fixedInteg.indexOf('localPort = ' + portE) >= 0 && fs.existsSync(realBak) && fs.readFileSync(realBak, 'utf8').indexOf('localPort = 25565') >= 0,
+      'localPort -> ' + portE);
+
+    const stopE = await httpRequest({ port: portE, path: '/tunnel/stop', method: 'POST', timeout: 5000 });
+    check('③ POST /tunnel/stop 正常', stopE.status === 200 && stopE.json && stopE.json.ok === true, JSON.stringify(stopE.json && { ok: stopE.json.ok, state: stopE.json.state }));
+  } finally {
+    await stopServer(serverE);
+    await wait(800);
+    try { fs.writeFileSync(realCfgPath2, backRealCfg); } catch (e) {}
+    try {
+      if (hadToml) fs.writeFileSync(realToml, backToml); else { try { fs.unlinkSync(realToml); } catch (e) {} }
+      if (hadBak) fs.writeFileSync(realBak, backBak); else { try { fs.unlinkSync(realBak); } catch (e) {} }
+    } catch (e) {}
+  }
+
+  // ④ 安全：.gitignore 忽略真实配置；只提交 .example 模板
+  const gitignoreText = fs.readFileSync(path.join(PROJECT_ROOT, '.gitignore'), 'utf8');
+  check('④ .gitignore 已忽略 server/frpc.toml（真实凭据不入库）',
+    gitignoreText.split(/\r?\n/).some(function (l) { return l.trim() === 'server/frpc.toml'; }), '');
+  const examplePath = path.join(ROOT, 'frpc.toml.example');
+  const exampleText = fs.existsSync(examplePath) ? fs.readFileSync(examplePath, 'utf8') : '';
+  check('④ frpc.toml.example 存在且只含占位符（无真实 token）',
+    exampleText.indexOf('你的令牌') >= 0 && exampleText.indexOf(secretToken) < 0 && exampleText.indexOf('serverAddr') >= 0, '');
+
+  process.env.PATH = basePath;
+  await wait(900);
+  try { fs.rmSync(frpRoot, { recursive: true, force: true, maxRetries: 6, retryDelay: 300 }); } catch (e) {}
   const totalMs = Date.now() - startedAll;
   console.log('\n============================================================');
   console.log('  自测结果：' + passed + ' 项通过，' + failed + ' 项失败，用时 ' + totalMs + 'ms');
