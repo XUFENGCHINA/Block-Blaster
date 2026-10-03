@@ -87,7 +87,7 @@ const Sfx = {
 
 /* ================= 输入 ================= */
 const keys = Object.create(null);
-const input = { mx: W/2, my: H/2, mouseDown: false, usedMouse: false,
+const input = { mx: W/2, my: H/2, mouseDown: false, wheelAim: false, usedMouse: false,
                 joyX: 0, joyY: 0, touchFire: false, touchMode: false };
 let touchCapable = false;
 
@@ -103,8 +103,18 @@ window.addEventListener('keydown', e => {
   }
 }, { passive: false });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
-window.addEventListener('blur', () => { if (G.state === 'playing') togglePause(); input.mouseDown = false; });
+window.addEventListener('blur', () => { if (G.state === 'playing') togglePause(); input.mouseDown = false; input.wheelAim = false; btnMask = 0; });
 
+/* 鼠标按键位掩码：bit0=左键(射击) bit1=右键 bit2=中键(锁敌) —— 多个键可同时按住 */
+let btnMask = 0;
+function btnBit(b){ return b === 1 ? 4 : b === 2 ? 2 : (b === 0 || b === undefined || b === null) ? 1 : 8; }   // 未给 button 时按左键处理
+function setBtns(e, mode){
+  if (typeof e.buttons === 'number') btnMask = e.buttons;
+  else if (mode === 'down') btnMask |= btnBit(e.button);
+  else if (mode === 'up') btnMask &= ~btnBit(e.button);
+  input.mouseDown = (btnMask & 1) !== 0;
+  input.wheelAim = (btnMask & 4) !== 0;
+}
 function toLocal(cx, cy){
   const r = canvas.getBoundingClientRect();
   return { x: (cx - r.left) / r.width * W, y: (cy - r.top) / r.height * H };
@@ -112,15 +122,20 @@ function toLocal(cx, cy){
 canvas.addEventListener('pointerdown', e => {
   Sfx.unlock();
   if (e.pointerType === 'touch') return;
-  input.touchMode = false; input.mouseDown = true; input.usedMouse = true;
+  input.touchMode = false; input.usedMouse = true;
   const p = toLocal(e.clientX, e.clientY); input.mx = p.x; input.my = p.y;
+  if (e.button === 1) e.preventDefault();      // 中键：别触发浏览器自动滚动
+  setBtns(e, 'down');                          // 左键=射击，中键=锁敌，可同时按住
 });
+canvas.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); });   // 关掉中键自动滚动
+canvas.addEventListener('auxclick', e => { if (e.button === 1) e.preventDefault(); });
 canvas.addEventListener('pointermove', e => {
   if (e.pointerType === 'touch') return;
   input.touchMode = false;
   const p = toLocal(e.clientX, e.clientY); input.mx = p.x; input.my = p.y; input.usedMouse = true;
+  setBtns(e, 'move');
 });
-window.addEventListener('pointerup', e => { if (e.pointerType !== 'touch') input.mouseDown = false; });
+window.addEventListener('pointerup', e => { if (e.pointerType !== 'touch') setBtns(e, 'up'); });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
 /* ================= 全局状态 ================= */
@@ -789,8 +804,10 @@ function updatePlayer(dt){
     if (p.reviveT <= 0){ p.down = false; p.hp = Math.round(p.maxHp * 0.5); p.invuln = 2; burst(p.x, p.y, st.color, 20, 260); }
     return;
   }
-  const e = nearestEnemy(p.x, p.y, 620);
-  if ((input.touchMode || !input.usedMouse) && e) p.aim = angLerp(p.aim, angTo(p.x, p.y, e.x, e.y), 1 - Math.pow(0.0000002, dt));
+  const e = nearestEnemy(p.x, p.y, input.wheelAim ? 1600 : 620);
+  G.aimTarget = input.wheelAim ? e : null;
+  if (input.wheelAim && e) p.aim = angLerp(p.aim, angTo(p.x, p.y, e.x, e.y), 1 - Math.pow(0.00000002, dt));
+  else if ((input.touchMode || !input.usedMouse) && e) p.aim = angLerp(p.aim, angTo(p.x, p.y, e.x, e.y), 1 - Math.pow(0.0000002, dt));
   else p.aim = angLerp(p.aim, angTo(p.x, p.y, input.mx + G.cam.x, input.my + G.cam.y), 1 - Math.pow(0.0000002, dt));   // 鼠标是屏幕坐标，要加回摄像机偏移
   const m = moveInput();
   if (p.dashTime > 0){
@@ -1023,6 +1040,10 @@ function startRun(cfg){
           firstClear: cfg.mode === 'campaign' ? (Save.levelStars(cfg.level.id) === 0) : true,
           wave: 0, wavePhase: 'gap', waveTimer: 1.1, spawnQueue: [], hpMul: 1,
           kills: 0, score: 0, coins: 0, waveCoins: 0, combo: 0, comboT: 0 };
+  /* 关键：每次开新局都要把世界尺寸/边界/摄像机复位，否则大逃杀的大地图会残留到关卡模式 */
+  G.world = { w: W, h: H };
+  G.bounds = { l: ARENA.l, t: ARENA.t, r: ARENA.r, b: ARENA.b };
+  G.cam.x = 0; G.cam.y = 0;
   G.obstacles = makeObstacles(cfg.obstacle || 'none');
   G.player = makePlayer();
   G.enemies.length = 0; G.bullets.length = 0; G.ebullets.length = 0; G.particles.length = 0;
@@ -1466,6 +1487,15 @@ function drawCrosshair(){
   ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(-1.5, -1.5, 3, 3);
   ctx.restore();
+  if (input.wheelAim && G.aimTarget && !G.aimTarget.dead){
+    const t = G.aimTarget, sx = t.x - G.cam.x, sy = t.y - G.cam.y;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,210,74,0.95)'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.lineDashOffset = -G.bg * 30;
+    ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 10, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]); ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 15, -0.35, 0.35); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sx, sy, (t.r || 16) + 15, Math.PI - 0.35, Math.PI + 0.35); ctx.stroke();
+    ctx.restore();
+  }
 }
 function drawVignette(){
   const p = G.player;
