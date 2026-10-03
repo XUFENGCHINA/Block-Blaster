@@ -1,0 +1,21 @@
+{
+  "port": 8080,
+  "host": "0.0.0.0",
+  "maxPlayers": 6,
+  "maxRooms": 200,
+  "publicUrl": "",
+  "tunnel": {
+    "auto": true,
+    "prefer": "upnp",
+    "externalPort": 0,
+    "keepAlive": true,
+    "provider": "none",
+    "note": "publicUrl 可手动填写；--tunnel=auto 穿透成功后也会自动写回这里（不要带结尾斜杠）"
+  },
+  "heartbeat": {
+    "idleMs": 30000,
+    "pongTimeoutMs": 60000,
+    "tickMs": 5000
+  },
+  "maxMessageBytes": 2097152
+}

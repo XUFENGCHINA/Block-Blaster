@@ -1,0 +1,30 @@
+# ===== 系统 / 编辑器 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.idea/
+.vscode/
+*.code-workspace
+
+# ===== 与游戏无关的目录（不属于本项目，不随仓库上传）=====
+BrowserProxy/
+
+# ===== 构建中间产物（成品在 dist/，会被提交，方便直接下载）=====
+android/build/
+android/.gradle/
+android/app/build/
+android/tools/debug.keystore
+android/tools/*.keystore
+*.jks
+*.keystore
+packaging/exe/*.pdb
+packaging/exe/obj/
+__pycache__/
+*.pyc
+*.log
+*.tmp
+%TEMP%/
+
+# ===== 本地个人配置（保留模板 config.json，忽略本地覆盖）=====
+server/config.local.json

@@ -1,0 +1,37 @@
+{
+  "name": "方块枪神 2D",
+  "short_name": "方块枪神",
+  "description": "方块枪神 2D · 零依赖 HTML5 Canvas 像素射击游戏，支持联机合作与内网穿透。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
+  "orientation": "landscape",
+  "theme_color": "#05070d",
+  "background_color": "#05070d",
+  "categories": ["games", "action"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

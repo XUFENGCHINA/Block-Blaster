@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PWA self-check</title>
+</head>
+<body>
+<pre id="r">RUNNING</pre>
+<script>
+(async function () {
+  var lines = [];
+  function out(s) { lines.push(s); document.getElementById('r').textContent = lines.join('\n'); }
+  try {
+    var mr = await fetch('../../manifest.webmanifest');
+    out('manifest_status=' + mr.status + ' type=' + (mr.headers.get('content-type') || '?'));
+    var text = await mr.text();
+    var j = JSON.parse(text);
+    out('manifest_json=VALID name=' + j.name + ' short=' + j.short_name + ' display=' + j.display + ' orientation=' + j.orientation + ' start=' + j.start_url + ' theme=' + j.theme_color + ' icons=' + j.icons.length);
+    var kinds = j.icons.map(function (i) { return i.sizes + ':' + i.purpose; }).join('|');
+    out('manifest_icons=' + kinds);
+    for (var i = 0; i < j.icons.length; i++) {
+      var ir = await fetch('../../' + j.icons[i].src);
+      out('icon ' + j.icons[i].src + ' status=' + ir.status + ' bytes=' + (await ir.arrayBuffer()).byteLength);
+    }
+  } catch (e) { out('manifest_check=FAIL ' + e.message); }
+  try {
+    var sw = await navigator.serviceWorker.getRegistrations();
+    out('service_worker_registrations=' + sw.length + ' secureContext=' + window.isSecureContext);
+  } catch (e) { out('service_worker_check=FAIL ' + e.message); }
+  out('pwa_script=' + (typeof PWA !== 'undefined' ? 'LOADED canInstall=' + PWA.canInstall() : 'MISSING'));
+  out('DONE');
+})();
+</script>
+</body>
+</html>
