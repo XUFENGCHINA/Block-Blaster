@@ -5,7 +5,7 @@
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [0.1.0] - 2026-10-03
+## [1.0.1] - 2026-10-03
 
 首个公开版本：100 个战役关卡、50 种怪物图鉴、大逃杀、局域网 / 内网穿透联机合作，
 以及 Windows EXE 与 Android APK 安装包。
