@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "浏览器代理",
+  "version": "1.0.0",
+  "description": "仅对浏览器生效的代理切换插件，支持 HTTP/SOCKS5 代理与域名排除，不修改系统代理，不影响其他软件。",
+  "permissions": ["proxy", "storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "浏览器代理"
+  }
+}

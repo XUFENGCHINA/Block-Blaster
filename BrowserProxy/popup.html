@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>浏览器代理</h1>
+    <div id="status" class="status">正在读取状态...</div>
+
+    <label class="row">
+      <input type="checkbox" id="enabled">
+      <span>启用代理</span>
+    </label>
+
+    <div class="field">
+      <label>协议</label>
+      <div class="radio-group">
+        <label><input type="radio" name="protocol" value="http" checked> HTTP</label>
+        <label><input type="radio" name="protocol" value="socks5"> SOCKS5</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="host">服务器</label>
+      <input type="text" id="host" placeholder="127.0.0.1">
+    </div>
+
+    <div class="field">
+      <label for="port">端口</label>
+      <input type="text" id="port" placeholder="7890">
+    </div>
+
+    <div class="field">
+      <label for="proxyDomains">代理域名（每行一个，支持 *.example.com 通配）</label>
+      <textarea id="proxyDomains" rows="5" placeholder="*.google.com&#10;github.com&#10;192.168.1.100"></textarea>
+      <p class="hint">localhost 与 127.0.0.1 始终直连；仅列表中的域名走代理，其余全部直连。</p>
+    </div>
+
+    <div class="actions">
+      <button id="applyBtn" class="primary">应用设置</button>
+      <button id="disableBtn">停用代理</button>
+    </div>
+    <div id="msg" class="msg"></div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
