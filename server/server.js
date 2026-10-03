@@ -41,6 +41,7 @@ const DEFAULT_CONFIG = {
     externalPort: 0,
     keepAlive: true,
     provider: 'none',
+    frp: { configFile: 'frpc.toml', autoFixLocalPort: true, publicHost: '', publicPort: 0 },
     note: 'publicUrl 可手动填写；--tunnel=auto 穿透成功后会自动写回这里'
   },
   heartbeat: { idleMs: 30000, pongTimeoutMs: 60000, tickMs: 5000 },
@@ -71,6 +72,8 @@ function parseArgs(argv) {
     } else if (a === '--port' || a === '--host' || a === '--public-url' || a === '--max-players' || a === '--max-rooms' || a === '--tunnel' || a === '--tunnel-tool') {
       out[a.slice(2)] = argv[i + 1];
       i++;
+    } else if (a === '--frp-no-fix') {
+      out['frp-no-fix'] = '1';
     } else if (a === '-p' && argv[i + 1]) {
       out.port = argv[++i];
     } else if (a === '--help' || a === '-h') {
@@ -90,7 +93,7 @@ function loadConfig() {
   const fileCfg = readConfigFile();
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log('用法: node server.js [--port=8080] [--host=0.0.0.0] [--public-url=https://xxx] [--max-players=6] [--max-rooms=200] [--tunnel=auto|upnp|off] [--tunnel-tool=cloudflared|ngrok|frpc]');
+    console.log('用法: node server.js [--port=8080] [--host=0.0.0.0] [--public-url=https://xxx] [--max-players=6] [--max-rooms=200] [--tunnel=auto|upnp|off] [--tunnel-tool=cloudflared|ngrok|frpc] [--frp-no-fix]');
     process.exit(0);
   }
   const cfg = Object.assign({}, DEFAULT_CONFIG, fileCfg);
@@ -121,6 +124,18 @@ function loadConfig() {
   cfg.tunnel.prefer = (cfg.tunnel.prefer === 'tool') ? 'tool' : 'upnp';
   cfg.tunnel.externalPort = toPositiveInt(cfg.tunnel.externalPort, 0, 0, 65535);
   cfg.tunnel.auto = tunnelMode !== 'off';
+
+  // frpc.toml（OpenFrp / ofalias 等平台）相关配置
+  cfg.frpNoFix = args['frp-no-fix'] === '1' || /^(1|true|yes|on)$/i.test(String(process.env.FRP_NO_FIX || ''));
+  cfg.tunnel.frp = Object.assign(
+    { configFile: 'frpc.toml', autoFixLocalPort: true, publicHost: '', publicPort: 0 },
+    DEFAULT_CONFIG.tunnel.frp || {},
+    (fileCfg.tunnel && fileCfg.tunnel.frp) || {}
+  );
+  cfg.tunnel.frp.configFile = String(cfg.tunnel.frp.configFile || 'frpc.toml');
+  cfg.tunnel.frp.autoFixLocalPort = cfg.tunnel.frp.autoFixLocalPort !== false && !cfg.frpNoFix;
+  cfg.tunnel.frp.publicHost = String(cfg.tunnel.frp.publicHost || '');
+  cfg.tunnel.frp.publicPort = toPositiveInt(cfg.tunnel.frp.publicPort, 0, 0, 65535);
   return cfg;
 }
 
@@ -1084,6 +1099,14 @@ TUNNEL = new TunnelManager({
   configPath: CONFIG_PATH,
   keepAlive: !!(CONFIG.tunnel && CONFIG.tunnel.keepAlive),
   writeConfig: true,
+  frp: {
+    configDir: __dirname,
+    configFile: (CONFIG.tunnel.frp && CONFIG.tunnel.frp.configFile) || 'frpc.toml',
+    autoFixLocalPort: !CONFIG.frpNoFix && !(CONFIG.tunnel.frp && CONFIG.tunnel.frp.autoFixLocalPort === false),
+    publicHost: (CONFIG.tunnel.frp && CONFIG.tunnel.frp.publicHost) || '',
+    publicPort: (CONFIG.tunnel.frp && CONFIG.tunnel.frp.publicPort) || 0,
+    noFix: !!CONFIG.frpNoFix
+  },
   onLog: function (line) { log(line); },
   onPublic: function (pub) {
     CONFIG.publicUrl = (pub && pub.url) ? String(pub.url).replace(/\/+$/, '') : (CONFIGURED_PUBLIC_URL || '');

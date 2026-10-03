@@ -1,0 +1,40 @@
+# ============================================================
+#  方块枪神 2D · frpc TOML 配置模板
+#  适用：frp v0.52+ / OpenFrp / ofalias 等平台下发的 frpc.toml
+# ------------------------------------------------------------
+#  用法（二选一）：
+#    1. 把平台下发的 frpc.toml 内容整份粘贴进来，覆盖本文件；
+#    2. 或直接把平台下发的文件保存为 server/frpc.toml（推荐）。
+#  说明：
+#    * server/frpc.toml 已在 .gitignore 中，不会被提交；
+#      千万不要把带 token 的配置上传到 GitHub！
+#    * localPort 保持 8080 即可：服务端启动时会自动改成实际游戏端口，
+#      改前会备份 server/frpc.toml.bak（可用 --frp-no-fix 关闭自动修改）。
+#    * remotePort 必须填平台给你分配的隧道端口，必须与平台一致。
+#    * 如果平台给了独立自定义域名，启动后手动改 server/config.json 的 publicUrl，
+#      或设置 tunnel.frp.publicHost。
+# ============================================================
+
+serverAddr = '你的节点地址'
+serverPort = 8120                        # 以平台下发为准
+user = '你的用户ID'                       # 平台账号/用户 ID
+
+[auth]
+method = 'token'
+token = '你的令牌'                        # 真实 token 只放在 server/frpc.toml，不要入库
+
+[[proxies]]
+name = 'block-gunner-2d-tcp'
+type = 'tcp'
+localIP = '127.0.0.1'
+localPort = 8080                         # 服务端会自动纠正成实际端口
+remotePort = 0                           # 由平台分配，填平台给你的值
+autoTLS = 'false'
+
+[transport]
+protocol = 'tcp'
+
+[transport.tls]
+enable = true
+serverName = '你的节点域名'                # 例如 xxx.openfrp.net；服务端用它推导公网地址
+disableCustomTLSFirstByte = false

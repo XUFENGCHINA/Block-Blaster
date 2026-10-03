@@ -46,11 +46,11 @@ const TOOL_DEFS = {
   },
   frpc: {
     name: 'frpc',
-    label: 'frpc（需要你自己的公网 frps 服务器）',
+    label: 'frpc（自建 frps 或 OpenFrp / ofalias 等平台）',
     bins: ['frpc'],
-    args: function () { return ['-c', 'frpc.ini']; },
+    args: function () { return ['-c', 'frpc.ini']; }, // PATH 回退模式；server/frpc.toml 会被优先使用
     urlPatterns: [/https?:\/\/[^\s"'<>]+/i],
-    installHint: '安装：把 frpc.exe 和 frpc.ini 放同一目录（如 C:\\frp\\），并在 frpc.ini 配好 server_addr / remote_port。'
+    installHint: '安装：把 frpc.exe 放到 PATH 或 C:\\frp\\；平台下发的配置存成 server/frpc.toml（旧版 server/frpc.ini 也支持），服务端会自动使用。'
   }
 };
 
@@ -205,7 +205,7 @@ function writeConfigPublicUrl(configPath, url, provider) {
 /* frpc 输出里一般没有公网 URL，从同目录 frpc.ini 推断 */
 function parseFrpcIniUrl(binPath) {
   try {
-    const ini = path.join(path.dirname(binPath), 'frpc.ini');
+    const ini = (isFile(binPath) && /frpc\.ini$/i.test(binPath)) ? binPath : path.join(path.dirname(binPath), 'frpc.ini');
     if (!isFile(ini)) return null;
     const text = fs.readFileSync(ini, 'utf8');
     const server = /^\s*server_addr\s*=\s*([^\s#;]+)/mi.exec(text);
@@ -218,16 +218,308 @@ function parseFrpcIniUrl(binPath) {
   return null;
 }
 
+/* ---------------------------- TOML 解析（只认 frpc.toml 常用字段，零依赖） ---------------------------- */
+
+/* 日志脱敏：任何 token 一律显示为 *** */
+function maskToken(value) {
+  let s = String(value === undefined || value === null ? '' : value);
+  s = s.replace(/(\btoken\s*[:=]\s*)(['"])([\s\S]*?)\2/gi, function (m, p1, q) { return p1 + q + '***' + q; });
+  s = s.replace(/(\btoken\s*[:=]\s*)([^\s,;#'"]+)/gi, '$1***');
+  return s;
+}
+
+function stripTomlComment(line) {
+  let inSingle = false;
+  let inDouble = false;
+  let out = '';
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '\\' && inDouble) { out += c; if (i + 1 < line.length) out += line[++i]; continue; }
+    if (c === "'" && !inDouble) inSingle = !inSingle;
+    else if (c === '"' && !inSingle) inDouble = !inDouble;
+    else if (c === '#' && !inSingle && !inDouble) break;
+    out += c;
+  }
+  return out;
+}
+
+function unquoteTomlKey(key) {
+  const k = String(key || '').trim();
+  if (k.length >= 2 && ((k[0] === "'" && k[k.length - 1] === "'") || (k[0] === '"' && k[k.length - 1] === '"'))) return k.slice(1, -1);
+  return k;
+}
+
+function splitTomlKeyPath(key) {
+  const parts = [];
+  let cur = '';
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < key.length; i++) {
+    const c = key[i];
+    if (c === "'" && !inDouble) { inSingle = !inSingle; cur += c; continue; }
+    if (c === '"' && !inSingle) { inDouble = !inDouble; cur += c; continue; }
+    if (c === '.' && !inSingle && !inDouble) { parts.push(unquoteTomlKey(cur)); cur = ''; continue; }
+    cur += c;
+  }
+  parts.push(unquoteTomlKey(cur));
+  return parts.filter(Boolean);
+}
+
+function splitTomlArray(inner) {
+  const out = [];
+  let cur = '';
+  let depth = 0;
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < inner.length; i++) {
+    const c = inner[i];
+    if (c === "'" && !inDouble) inSingle = !inSingle;
+    else if (c === '"' && !inSingle) inDouble = !inDouble;
+    else if (!inSingle && !inDouble) {
+      if (c === '[' || c === '{') depth++;
+      else if (c === ']' || c === '}') depth--;
+    }
+    if (c === ',' && depth === 0 && !inSingle && !inDouble) { out.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  if (cur.trim()) out.push(cur);
+  return out;
+}
+
+function parseTomlValue(raw) {
+  const v = String(raw || '').trim();
+  if (!v) return '';
+  if (v.length >= 2 && v[0] === "'" && v[v.length - 1] === "'") return v.slice(1, -1);
+  if (v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') {
+    try { return JSON.parse(v); } catch (e) { return v.slice(1, -1); }
+  }
+  if (/^true$/i.test(v)) return true;
+  if (/^false$/i.test(v)) return false;
+  if (/^\[[\s\S]*\]$/.test(v)) return splitTomlArray(v.slice(1, -1)).map(parseTomlValue);
+  if (/^\{[\s\S]*\}$/.test(v)) {
+    const out = {};
+    for (const part of splitTomlArray(v.slice(1, -1))) {
+      const m = /^\s*([^=]+?)\s*=\s*([\s\S]+?)\s*$/.exec(part);
+      if (m) out[unquoteTomlKey(m[1])] = parseTomlValue(m[2]);
+    }
+    return out;
+  }
+  if (/^[+-]?\d[\d_]*$/.test(v)) return parseInt(v.replace(/_/g, ''), 10);
+  if (/^[+-]?(?:\d[\d_]*)?\.\d[\d_]*(?:[eE][+-]?\d+)?$/.test(v) || /^[+-]?\d[\d_]*[eE][+-]?\d+$/.test(v)) return parseFloat(v.replace(/_/g, ''));
+  return v;
+}
+function setTomlPath(obj, parts, value) {
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const k = parts[i];
+    if (!cur[k] || typeof cur[k] !== 'object' || Array.isArray(cur[k])) cur[k] = {};
+    cur = cur[k];
+  }
+  if (parts.length) cur[parts[parts.length - 1]] = value;
+}
+
+function ensureTomlTable(root, parts) {
+  let cur = root;
+  for (const k of parts) {
+    if (Array.isArray(cur[k])) cur = cur[k][cur[k].length - 1];
+    else {
+      if (!cur[k] || typeof cur[k] !== 'object') cur[k] = {};
+      cur = cur[k];
+    }
+  }
+  return cur;
+}
+
+function appendTomlArrayTable(root, parts) {
+  const parentParts = parts.slice(0, -1);
+  const name = parts[parts.length - 1];
+  let parent = root;
+  for (const k of parentParts) {
+    if (Array.isArray(parent[k])) parent = parent[k][parent[k].length - 1];
+    else {
+      if (!parent[k] || typeof parent[k] !== 'object') parent[k] = {};
+      parent = parent[k];
+    }
+  }
+  if (!Array.isArray(parent[name])) parent[name] = [];
+  const obj = {};
+  parent[name].push(obj);
+  return obj;
+}
+
+/* 极简 TOML 解析：支持 [table] / [[array of tables]] / key = value / 注释 / 基本字符串 */
+function parseToml(text) {
+  const root = {};
+  let current = root;
+  const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+  for (const raw of lines) {
+    const line = stripTomlComment(raw).trim();
+    if (!line) continue;
+    let m = /^\[\[\s*([\s\S]+?)\s*\]\]$/.exec(line);
+    if (m) { current = appendTomlArrayTable(root, splitTomlKeyPath(m[1])); continue; }
+    m = /^\[\s*([\s\S]+?)\s*\]$/.exec(line);
+    if (m) { current = ensureTomlTable(root, splitTomlKeyPath(m[1])); continue; }
+    m = /^([^=]+?)\s*=\s*([\s\S]+)$/.exec(line);
+    if (m) { setTomlPath(current, splitTomlKeyPath(m[1]), parseTomlValue(m[2])); continue; }
+    // 多行字符串 / 未知语法直接忽略（frpc.toml 常用字段都是单行键值）
+  }
+  return root;
+}
+
+function toIntOrNull(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/* 提取 frpc.toml 里我们需要的那几个字段 */
+function parseFrpcToml(text) {
+  let root = {};
+  let error = null;
+  try { root = parseToml(text); } catch (e) { error = e && e.message ? e.message : String(e); }
+  const proxies = Array.isArray(root.proxies) ? root.proxies : [];
+  const proxy = proxies.length ? proxies[0] : null;
+  const auth = root.auth || {};
+  const tls = (root.transport && root.transport.tls) || {};
+  const pickProxy = function (key) { return proxy && proxy[key] !== undefined ? proxy[key] : null; };
+  return {
+    ok: !error,
+    error: error,
+    serverAddr: root.serverAddr !== undefined ? String(root.serverAddr) : null,
+    serverPort: toIntOrNull(root.serverPort),
+    user: root.user !== undefined ? String(root.user) : null,
+    auth: {
+      method: auth.method !== undefined ? String(auth.method) : null,
+      token: auth.token !== undefined ? String(auth.token) : null
+    },
+    transport: {
+      protocol: root.transport && root.transport.protocol !== undefined ? String(root.transport.protocol) : null,
+      tls: {
+        enable: tls.enable,
+        serverName: tls.serverName !== undefined ? String(tls.serverName) : null
+      }
+    },
+    proxies: proxies,
+    name: pickProxy('name') !== null ? String(pickProxy('name')) : null,
+    type: pickProxy('type') !== null ? String(pickProxy('type')) : null,
+    localIP: pickProxy('localIP') !== null ? String(pickProxy('localIP')) : '127.0.0.1',
+    localPort: toIntOrNull(pickProxy('localPort') !== null ? pickProxy('localPort') : root.localPort),
+    remotePort: toIntOrNull(pickProxy('remotePort') !== null ? pickProxy('remotePort') : root.remotePort),
+    serverName: tls.serverName !== undefined ? String(tls.serverName) : null,
+    raw: String(text || '')
+  };
+}
+/* 生成脱敏后的配置摘要（绝不打印 token 原文） */
+function describeFrpcToml(info) {
+  const parts = ['serverAddr=' + (info.serverAddr || '?')];
+  if (info.serverPort) parts.push('serverPort=' + info.serverPort);
+  if (info.user) parts.push('user=' + info.user);
+  parts.push('token = ***');
+  if (info.name) parts.push('proxy=' + info.name);
+  if (info.type) parts.push('type=' + info.type);
+  parts.push('localPort=' + (info.localPort === null || info.localPort === undefined ? '?' : info.localPort));
+  parts.push('remotePort=' + (info.remotePort === null || info.remotePort === undefined ? '?' : info.remotePort));
+  if (info.serverName) parts.push('serverName=' + info.serverName);
+  return parts.join(' ');
+}
+
+/* 原地纠正第一个 [[proxies]] 块的 localPort；尽量保留注释与其它内容 */
+function fixLocalPortInToml(text, expectedPort) {
+  const src = String(text || '');
+  const eol = src.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+  const lines = src.split(/\r?\n/);
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*\[\[\s*proxies\s*\]\]\s*(?:#.*)?$/i.test(lines[i])) { start = i; break; }
+  }
+  if (start < 0) return { changed: false, reason: '没有 [[proxies]] 块', oldPort: null, text: src };
+  let end = lines.length;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^\s*\[/.test(lines[i])) { end = i; break; }
+  }
+  const keyRe = /^(\s*)(localPort|local_port)(\s*=\s*)(\d+)(\s*(?:#.*)?)$/i;
+  for (let i = start + 1; i < end; i++) {
+    const m = keyRe.exec(lines[i]);
+    if (m) {
+      const oldPort = parseInt(m[4], 10);
+      if (oldPort === expectedPort) return { changed: false, oldPort: oldPort, line: i + 1, text: src };
+      lines[i] = m[1] + m[2] + m[3] + String(expectedPort) + (m[5] || '');
+      return { changed: true, oldPort: oldPort, line: i + 1, text: lines.join(eol) };
+    }
+  }
+  let insertAt = start + 1;
+  for (let i = start + 1; i < end; i++) {
+    if (/^\s*(localIP|local_ip|type)\s*=/i.test(lines[i])) insertAt = i + 1;
+  }
+  const indentMatch = /^(\s*)/.exec(lines[insertAt] || lines[start + 1] || '');
+  const indent = indentMatch ? indentMatch[1] : '';
+  lines.splice(insertAt, 0, indent + 'localPort = ' + expectedPort);
+  return { changed: true, oldPort: null, inserted: true, line: insertAt + 1, text: lines.join(eol) };
+}
+function stripHost(raw) {
+  let s = String(raw || '').trim();
+  s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  s = s.split('/')[0];
+  s = s.replace(/^\[|\]$/g, '');
+  return s;
+}
+
+function hostForUrl(host) {
+  const h = String(host || '');
+  return (h.indexOf(':') >= 0 && h.indexOf('[') !== 0) ? '[' + h + ']' : h;
+}
+
+function splitHostPort(raw, defaultPort) {
+  const s = stripHost(raw);
+  let m = /^\[(.+)\]:(\d+)$/.exec(s);
+  if (m) return { host: m[1], port: parseInt(m[2], 10) };
+  m = /^([^:]+):(\d+)$/.exec(s);
+  if (m) return { host: m[1], port: parseInt(m[2], 10) };
+  return { host: s, port: parseInt(defaultPort, 10) || 0 };
+}
+
+/* 推导公网地址：publicHost 配置 > serverName 域名 > serverAddr，再拼 remotePort */
+function deriveFrpPublicUrl(info, frpOptions) {
+  const opts = frpOptions || {};
+  const remotePort = parseInt(info && info.remotePort, 10) || 0;
+  const publicPort = parseInt(opts.publicPort, 10) || remotePort || 0;
+  if (opts.publicHost) {
+    const hp = splitHostPort(opts.publicHost, publicPort);
+    if (hp.host) return { url: 'http://' + hostForUrl(hp.host) + (hp.port ? ':' + hp.port : ''), source: 'server/config.json tunnel.frp.publicHost' };
+  }
+  const serverName = stripHost(info && info.serverName);
+  const serverAddr = stripHost(info && info.serverAddr);
+  let host = '';
+  let source = '';
+  if (serverName && !/^\d+\.\d+\.\d+\.\d+$/.test(serverName)) { host = serverName; source = 'transport.tls.serverName'; }
+  else if (serverAddr) { host = serverAddr; source = 'serverAddr'; }
+  else if (serverName) { host = serverName; source = 'transport.tls.serverName'; }
+  if (!host || !publicPort) return null;
+  return { url: 'http://' + hostForUrl(host) + ':' + publicPort, source: source };
+}
+
+/* frpc 配置探测顺序：server/frpc.toml → server/frpc.ini → PATH 里的 frpc */
+function resolveFrpcPlan(frp) {
+  const opts = frp || {};
+  const configDir = opts.configDir || __dirname;
+  const configFile = String(opts.configFile || 'frpc.toml');
+  const tomlPath = path.isAbsolute(configFile) ? configFile : path.join(configDir, configFile);
+  const iniPath = path.join(configDir, 'frpc.ini');
+  const bin = findTool('frpc');
+  if (isFile(tomlPath)) return { mode: 'toml', bin: bin, configPath: tomlPath, tomlPath: tomlPath, iniPath: iniPath, hasToml: true };
+  if (isFile(iniPath)) return { mode: 'ini', bin: bin, configPath: iniPath, tomlPath: tomlPath, iniPath: iniPath, hasToml: false };
+  if (bin) return { mode: 'path', bin: bin, configPath: null, tomlPath: tomlPath, iniPath: iniPath, hasToml: false };
+  return { mode: null, bin: null, configPath: null, tomlPath: tomlPath, iniPath: iniPath, hasToml: false };
+}
 /* ---------------------------- 子进程启动 ---------------------------- */
 
-function spawnToolProcess(toolName, binPath, port) {
-  const def = TOOL_DEFS[toolName];
-  const args = def.args(port);
+function spawnCommand(binPath, args, cwd) {
+  const list = Array.isArray(args) ? args : [];
   const opts = { windowsHide: true, env: process.env };
-  if (toolName === 'frpc') opts.cwd = path.dirname(binPath);
+  if (cwd) opts.cwd = cwd;
 
   if (/\.(js|cjs|mjs)$/i.test(binPath)) {
-    return spawn(process.execPath, [binPath].concat(args), opts);
+    return spawn(process.execPath, [binPath].concat(list), opts);
   }
   if (process.platform === 'win32' && /\.(cmd|bat)$/i.test(binPath)) {
     // .cmd / .bat 需要 cmd.exe 转一层；显式拼命令行，避免 shell:true 的安全告警
@@ -237,10 +529,16 @@ function spawnToolProcess(toolName, binPath, port) {
       if (s === '') return '""';
       return /[\s"]/.test(s) ? '"' + s.replace(/"/g, '\\"') + '"' : s;
     };
-    const line = quote(binPath) + (args.length ? ' ' + args.map(quote).join(' ') : '');
+    const line = quote(binPath) + (list.length ? ' ' + list.map(quote).join(' ') : '');
     return spawn(comspec, ['/d', '/s', '/c', line], Object.assign({}, opts, { windowsVerbatimArguments: true }));
   }
-  return spawn(binPath, args, opts);
+  return spawn(binPath, list, opts);
+}
+
+function spawnToolProcess(toolName, binPath, port) {
+  const def = TOOL_DEFS[toolName];
+  const args = def.args(port);
+  return spawnCommand(binPath, args, toolName === 'frpc' ? path.dirname(binPath) : undefined);
 }
 
 function waitExit(child, timeoutMs) {
@@ -279,6 +577,16 @@ class TunnelManager {
     this.urlTimeoutMs = Math.max(3000, parseInt(opts.urlTimeoutMs, 10) || parseInt(process.env.BG_TUNNEL_URL_TIMEOUT_MS, 10) || 20000);
     this.upnp = opts.upnp || require('./upnp');
 
+    const frp = opts.frp || {};
+    this.frp = {
+      configDir: frp.configDir || __dirname,
+      configFile: String(frp.configFile || 'frpc.toml'),
+      autoFixLocalPort: frp.autoFixLocalPort !== false,
+      publicHost: String(frp.publicHost || ''),
+      publicPort: parseInt(frp.publicPort, 10) || 0,
+      noFix: frp.noFix === true
+    };
+
     this.logs = [];
     this.state = 'off';        // off | starting | running | failed | stopped
     this.provider = null;      // upnp | natpmp | cloudflared | ngrok | frpc
@@ -294,7 +602,7 @@ class TunnelManager {
   }
 
   log(message) {
-    const line = '[' + hhmmss() + '] ' + message;
+    const line = '[' + hhmmss() + '] ' + maskToken(message);
     this.logs.push(line);
     if (this.logs.length > 200) this.logs.splice(0, this.logs.length - 200);
     try { this.onLog(line); } catch (e) {}

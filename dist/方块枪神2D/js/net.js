@@ -87,8 +87,42 @@ function available(){
            window.location.protocol !== 'file:';
   } catch(e){ return false; }
 }
+/* 服务器地址只填一次：?server= 参数 > localStorage('bg2d_net_url') > 当前页面地址 */
+const NET_URL_KEY = 'bg2d_net_url';
+function readSavedUrl(){
+  try { return String(localStorage.getItem(NET_URL_KEY) || '').trim(); } catch(e){ return ''; }
+}
+function saveUrl(raw){
+  const v = String(raw == null ? '' : raw).trim();
+  try {
+    if (v) localStorage.setItem(NET_URL_KEY, v);
+    else localStorage.removeItem(NET_URL_KEY);
+  } catch(e){}
+  return v;
+}
+function readQueryServer(){
+  try {
+    const search = (window.location && window.location.search) || '';
+    const m = /[?&]server=([^&]*)/.exec(search);
+    if (!m || !m[1]) return '';
+    return decodeURIComponent(m[1].replace(/\+/g, ' ')).trim();
+  } catch(e){ return ''; }
+}
+/* 显式配置的地址（URL 参数优先，其次本地保存）；没有配置时返回 '' */
+function configuredUrl(){
+  const q = readQueryServer();
+  if (q){ saveUrl(q); return q; }
+  return readSavedUrl();
+}
+/* Persist ?server= as soon as the page loads, so a one-time fill survives reloads. */
+try { if (readQueryServer()) configuredUrl(); } catch(e){}
 function autoUrl(){
   try {
+    const saved = configuredUrl();
+    if (saved){
+      const normalized = normalizeUrl(saved);
+      if (normalized) return normalized;
+    }
     const loc = window.location;
     if (!loc || !loc.host) return '';
     const proto = (loc.protocol === 'https:') ? 'wss:' : 'ws:';
@@ -463,6 +497,8 @@ const api = {
   FILE_HINT: FILE_HINT,
   available: available,
   autoUrl: autoUrl,
+  savedUrl: configuredUrl,
+  saveUrl: saveUrl,
   normalizeUrl: normalizeUrl,
   parseHash: function(){
     const out = { screen: null, join: null };

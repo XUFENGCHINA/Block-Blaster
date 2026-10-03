@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-02T13:02:29.595Z",
+  "generatedAt": "2026-10-03T15:14:38.502Z",
   "profile": "desktop",
   "strict": true,
   "seed": 20250501,
@@ -22,7 +22,7 @@
       "name": "BR 开局 · 地图2(2600x1700, 38敌)",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 1,
+      "ms": 2,
       "notes": [
         "map2 敌人数=38 最小间距=104.9px 出生点=(2462,338)"
       ]
@@ -44,7 +44,7 @@
       "name": "BR 拾取换枪 · 旧枪留在原地且可换回",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 9,
+      "ms": 10,
       "notes": []
     },
     {
@@ -76,7 +76,7 @@
       "name": "BR 鼠标瞄准 · 大世界摄像机偏移下方向正确",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 4,
+      "ms": 6,
       "notes": [
         "cam.x=420 鼠标指向 +x 后 p.aim=-0.199（cos=0.980）"
       ]
@@ -87,7 +87,7 @@
       "name": "BR 杀光胜利 · 首次发奖 / 重复不发",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 23,
+      "ms": 24,
       "notes": [
         "清场后 killed=28/28（含分裂产生的小怪） state=over",
         "已由 Lead 清理：BR 只剩 RUN.br 一个真相源，G.br 死状态已移除",
@@ -115,7 +115,7 @@
       "name": "BR 边界 · 玩家被限制在 bounds 内",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 2,
+      "ms": 3,
       "notes": [
         "边界夹紧正常 [30,30]-[1770,1170]"
       ]
@@ -126,7 +126,7 @@
       "name": "BR 子弹 · 飞出世界被回收",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 1,
+      "ms": 0,
       "notes": []
     },
     {
@@ -135,7 +135,7 @@
       "name": "回归 · 战役第1关通关 + 每波金币 + 重复不发",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 31,
+      "ms": 32,
       "notes": [
         "普通关清空 11 只，首通金币 +108，3 星",
         "重复通关不再发金币"
@@ -147,7 +147,7 @@
       "name": "回归 · 障碍物挡子弹",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 2,
+      "ms": 3,
       "notes": [
         "柱子挡弹 + 无遮挡可命中，均正常"
       ]
@@ -177,7 +177,7 @@
       "name": "Edge headless 冒烟 · 主菜单/进入 BR/无 JS 错误",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 5557,
+      "ms": 5530,
       "notes": [
         "dump-dom 主菜单：大逃杀按钮存在，无 NAVERR/JS 报错",
         "dump-dom #br 直入大逃杀页：3 张地图卡 + 开始按钮，无 NAVERR/JS 报错",
@@ -190,7 +190,7 @@
       "name": "BR HUD · brChip 显隐 / 剩余敌人 / hudWeapon",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 5,
+      "ms": 4,
       "notes": [
         "非 BR 隐藏 #brChip；BR 显示剩余敌人并随击杀更新；#hudWeapon 正确"
       ]
@@ -201,7 +201,7 @@
       "name": "BR 地图2 · 首胜 +600 / 重复 0",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 32,
+      "ms": 27,
       "notes": [
         "地图 2 首胜 +600 金币（total=49, kills=49）",
         "地图 2 重复胜利 reward=0、金币不变"
@@ -213,7 +213,7 @@
       "name": "BR 地图3 · 首胜 +1100 / 重复 0",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 36,
+      "ms": 33,
       "notes": [
         "地图 3 首胜 +1100 金币（total=60, kills=60）",
         "地图 3 重复胜利 reward=0、金币不变"
@@ -225,7 +225,7 @@
       "name": "回归 · 第8关 BOSS 通关",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 38,
+      "ms": 32,
       "notes": [
         "BOSS 关通关：bossSeen=true wave2=true kills=25 stars=3"
       ]
@@ -236,7 +236,7 @@
       "name": "数据 · 50 条 ENEMY 字段与 tier 分布",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 1,
+      "ms": 0,
       "notes": [
         "50 条字段/类型校验通过；实际 tier 分布：普通=4 精锐=7 稀有=16 史诗=13 传说=10"
       ]
@@ -269,7 +269,7 @@
       "name": "实例化 · 50 个 key 各跑 60 帧",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 57,
+      "ms": 49,
       "notes": [
         "50/50 key 各生成并跑 60 帧无异常，hp/size/基础速度与数据一致"
       ]
@@ -291,7 +291,7 @@
       "name": "特性 · regen 持续回血",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 2,
+      "ms": 1,
       "notes": [
         "regen 生效：80 -> 82.4（最大 160）"
       ]
@@ -302,7 +302,7 @@
       "name": "特性 · shield 挡下一次伤害",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 1,
+      "ms": 0,
       "notes": [
         "shield 生效：护盾挡下 60 点伤害，hp 不变"
       ]
@@ -335,7 +335,7 @@
       "name": "特性 · berserk 残血加速",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "notes": [
         "berserk 生效：速度 150 -> 210"
       ]
@@ -357,7 +357,7 @@
       "name": "特性 · aimbot 预判走位",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "notes": [
         "aimbot 生效：弹角 0.371 rad，普通 0.040 rad"
       ]
@@ -368,7 +368,7 @@
       "name": "特性 · homing 追踪弹拐弯",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 1,
+      "ms": 0,
       "notes": [
         "homing 生效：玩家横向瞬移后弹角变化 0.259 rad"
       ]
@@ -379,7 +379,7 @@
       "name": "特性 · wallhack 子弹穿墙",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "notes": [
         "wallhack 生效：穿墙弹留在柱子里，对照普通弹被回收"
       ]
@@ -390,7 +390,7 @@
       "name": "投放 · 50/50 全部有途径且 API 一致",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 4,
+      "ms": 2,
       "notes": [
         "50/50 全部有投放途径；每个 key 的首投放清单已写入 tests/dex-coverage.json"
       ]
@@ -401,7 +401,7 @@
       "name": "图鉴存档 · 生成不收录 / 击杀递增 / onDex 一次 / 重载持久",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "notes": [
         "生成不收录不写盘；首次击杀 0->1 且 onDex 一次；再次击杀 1->2；重载持久"
       ]
@@ -445,7 +445,7 @@
       "name": "100关界面 · 关卡页渲染 100 张卡",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 2,
+      "ms": 1,
       "notes": [
         "关卡页渲染 100 张卡；默认解锁状态正确（1 解锁 / 100 锁定）"
       ]
@@ -456,7 +456,7 @@
       "name": "联机主机 · setup / 10Hz 快照 / 格式",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 3,
+      "ms": 2,
       "notes": [
         "主机 setup + 10Hz 快照 + 快照字段格式正确（1s 内 10 帧）"
       ]
@@ -480,7 +480,7 @@
       "status": "PASS",
       "ms": 1,
       "notes": [
-        "敌人选择最近的远程玩家作为目标（距离 300 -> 238）"
+        "敌人选择最近的远程玩家作为目标（距离 300 -> 127）"
       ]
     },
     {
@@ -489,7 +489,7 @@
       "name": "联机主机 · 远程倒地 6 秒复活",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 14,
+      "ms": 11,
       "notes": [
         "远程玩家被击倒 -> 6 秒后半血复活"
       ]
@@ -511,7 +511,7 @@
       "name": "联机主机 · 清波金币/通关广播",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 24,
+      "ms": 16,
       "notes": [
         "主机清波广播 coins=50，通关广播 win"
       ]
@@ -555,7 +555,7 @@
       "name": "联机客户端 · lose 事件",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "notes": [
         "客户端 lose 广播处理正确"
       ]
@@ -566,7 +566,7 @@
       "name": "联机客户端 · 不本地推进波次（主机权威）",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 4,
+      "ms": 6,
       "notes": [
         "客户端未本地推进波次/发金币/生成敌人"
       ]
@@ -577,22 +577,9 @@
       "name": "联机合作 · 玩家倒地 6 秒复活",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 11,
+      "ms": 9,
       "notes": [
         "玩家倒地 6 秒后半血复活（队友存活）"
-      ]
-    },
-    {
-      "id": "G8.1",
-      "group": "8",
-      "name": "移动端 · 竖屏提示 + 触屏控件 + goBR 进游戏",
-      "profile": "mobile",
-      "status": "PASS",
-      "ms": 3,
-      "notes": [
-        "竖屏 matchMedia coarse -> #rotate 显示",
-        "UI goBR(1) -> Game.startBR -> playing，触屏控件显示",
-        "横屏 -> #rotate 隐藏"
       ]
     }
   ]

@@ -10,6 +10,12 @@
     "externalPort": 0,
     "keepAlive": true,
     "provider": "none",
+    "frp": {
+      "configFile": "frpc.toml",
+      "autoFixLocalPort": true,
+      "publicHost": "",
+      "publicPort": 0
+    },
     "note": "publicUrl 可手动填写；--tunnel=auto 穿透成功后也会自动写回这里（不要带结尾斜杠）"
   },
   "heartbeat": {

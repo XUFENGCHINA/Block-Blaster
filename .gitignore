@@ -28,3 +28,13 @@ __pycache__/
 
 # ===== 本地个人配置（保留模板 config.json，忽略本地覆盖）=====
 server/config.local.json
+
+# ===== frp 真实凭据（含 token，禁止入库；模板见 server/frpc.toml.example）=====
+server/frpc.toml
+server/frpc.toml.bak
+server/frpc.ini
+server/frpc.ini.bak
+**/frpc.toml
+**/frpc.toml.bak
+**/frpc.ini
+**/frpc.ini.bak

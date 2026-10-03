@@ -609,6 +609,11 @@ function renderNet(){
   fillNetSelects();
   const urlEl = $('netUrl');
   if (urlEl){
+    // 只填一次：优先 ?server= 参数（App 注入），其次是上次保存的 localStorage 值
+    if (!urlEl.value && netSupported() && Net.savedUrl){
+      const saved = Net.savedUrl();
+      if (saved) urlEl.value = saved;
+    }
     const au = (netSupported() && Net.autoUrl) ? Net.autoUrl() : '';
     urlEl.placeholder = '自动：' + (au || 'ws://192.168.1.5:8080/ws');
   }
@@ -721,7 +726,13 @@ function netDoCreate(){
   netPendingConfig = null;
   if (!netAvailable()){ netStatusMsg = netHint(); toastMsg(netHint()); updateNetStatus(); return; }
   const name = netNameValue(); storeNetName(name);
-  const step = (Net.status() === 'online') ? Promise.resolve({ ok: true }) : Net.connect(netUrlValue());
+  const netUrlInput = $('netUrl');
+  const netUrl = netUrlValue();
+  // 只填一次：记住用户真正填写的地址；空输入不要把当前页面地址当成 PC 地址存下来
+  if (netSupported() && Net.saveUrl && netUrlInput && String(netUrlInput.value || '').trim()){
+    Net.saveUrl(netUrl);
+  }
+  const step = (Net.status() === 'online') ? Promise.resolve({ ok: true }) : Net.connect(netUrl);
   step.then(c => {
     if (!c.ok) throw new Error(c.err || '连接失败');
     return Net.createRoom(name, netConfig());
@@ -744,7 +755,13 @@ function netDoJoin(){
   if (codeEl) codeEl.value = code;
   if (code.length !== 4){ toastMsg('请输入 4 位房间码（字母 / 数字）'); return; }
   const name = netNameValue(); storeNetName(name);
-  const step = (Net.status() === 'online') ? Promise.resolve({ ok: true }) : Net.connect(netUrlValue());
+  const netUrlInput = $('netUrl');
+  const netUrl = netUrlValue();
+  // 只填一次：记住用户真正填写的地址；空输入不要把当前页面地址当成 PC 地址存下来
+  if (netSupported() && Net.saveUrl && netUrlInput && String(netUrlInput.value || '').trim()){
+    Net.saveUrl(netUrl);
+  }
+  const step = (Net.status() === 'online') ? Promise.resolve({ ok: true }) : Net.connect(netUrl);
   step.then(c => {
     if (!c.ok) throw new Error(c.err || '连接失败');
     return Net.joinRoom(name, code);

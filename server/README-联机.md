@@ -179,10 +179,10 @@ cloudflared tunnel --url http://localhost:8080
 | --- | --- | --- |
 | **cloudflared（推荐）** | `winget install --id Cloudflare.cloudflared`，或到 Cloudflare 官网下载 | PATH、`C:\Program Files\cloudflared\`、`%LOCALAPPDATA%\cloudflared\` |
 | ngrok | 下载 ngrok.exe 后执行 `ngrok config add-authtoken <token>` | PATH、`C:\ngrok\`、`%USERPROFILE%\ngrok\` |
-| frpc | 从 frp 项目下载，需自己有公网 frps 服务器 | PATH、`C:\frp\`、`%USERPROFILE%\frp\` |
+| frpc | 自建 frps，或用 OpenFrp / ofalias 等平台（平台配置存成 `server/frpc.toml`） | PATH、`C:\frp\`、`%USERPROFILE%\frp\` |
 
 - 三个都装也可以，默认按 cloudflared → ngrok → frpc 顺序尝试；想指定就加 `--tunnel-tool=ngrok`。
-- frpc 的公网地址会从同目录 `frpc.ini` 的 `server_addr` + `remote_port` 推断（例如 `http://你的服务器IP:8080`）。
+- frpc 优先读 `server/frpc.toml`（OpenFrp/ofalias 新版格式），其次 `server/frpc.ini`；公网地址优先从输出抓，抓不到就用 `[transport.tls].serverName`（或 `serverAddr`）+ `remotePort` 推导。详见 4.6。
 - 也可以只把可执行文件放进上表目录、不配 PATH，重跑服务端即可自动发现。
 
 ### 4.4 怎么确认穿透成功
@@ -206,6 +206,51 @@ cloudflared tunnel --url http://localhost:8080
 - 免费隧道（cloudflared 快速隧道 / ngrok 免费版）**每次重启地址都可能变**，重启后重新复制新深链即可；UPnP 的地址则跟家里公网 IP 走。
 - 安全提醒：穿透开启后公网可访问，房间码是唯一门槛；不玩时请 Ctrl+C 关掉服务端（会自动删除 UPnP 映射、结束穿透进程）。
 
+### 4.6 用 OpenFrp / ofalias 等平台自带的 frpc.toml（国内平台推荐）
+
+平台下发的配置一般是新版 `frpc.toml`（frp v0.52+），服务端已内置支持，**不需要自己拼命令行参数**。
+
+#### 步骤
+
+1. 在平台（OpenFrp / ofalias 等）创建一个 **TCP** 隧道：
+   - 本地地址填 `127.0.0.1`，本地端口填 `8080`（服务端启动时会自动纠正成实际游戏端口）；
+   - 记下平台分配的**远程端口 remotePort**和节点域名。
+2. 下载平台提供的 `frpc.toml` 和 frpc 客户端：
+   - 配置保存为 `server/frpc.toml`；
+   - `frpc.exe` 放进系统 `PATH`，或放到 `C:\frp\`；
+   - 也可以复制 `server/frpc.toml.example` 为 `server/frpc.toml` 再照平台信息修改。
+3. 双击 `server\启动服务端.bat`（默认 `--tunnel=auto`）。服务端按 `server/frpc.toml` → `server/frpc.ini` → PATH 里的 frpc 顺序探测，有 toml 就优先用 toml。
+4. 看控制台日志：
+   - `已自动把 frpc.toml 的 localPort 从 25565 改为游戏端口 8080（原文件备份：frpc.toml.bak）`
+   - `推导公网地址：http://xxx.openfrp.net:44098（来源：transport.tls.serverName）`
+   - 出现 `【公网】http://xxx.openfrp.net:44098/` 即表示记录到了分享地址。
+5. 建房拿到 4 位房间码，把深链 `http://xxx.openfrp.net:44098/#join=房间码` 发给朋友即可。
+
+#### 常见问题
+
+| 现象 | 原因 / 解决 |
+| --- | --- |
+| 日志提示 localPort 不一致 / 朋友进不去房间 | `localPort` **必须是游戏服务端实际端口**（默认 8080）。服务端默认会自动纠正并备份 `.bak`；若加了 `--frp-no-fix`，请手动改。 |
+| 平台显示隧道在线，但公网地址打不开 | `remotePort` 必须与平台隧道配置**完全一致**；`serverAddr` / `serverPort` / `token` 用平台下发的原值，不要改错。 |
+| 打开的是平台首页或错误页 | 平台给了**独立自定义域名**（CNAME）时，推导出的 `serverName + remotePort` 不一定是最终地址；把最终地址手动填到 `server/config.json` 的 `publicUrl`，或设置 `tunnel.frp.publicHost`。 |
+| 日志里 token 显示成 `***` | 正常现象：日志只做脱敏显示，不影响连接；真实 token 只存在 `server/frpc.toml` 里。 |
+| 不想让服务端自动改配置 | 启动加 `--frp-no-fix`，或把 `server/config.json` 的 `tunnel.frp.autoFixLocalPort` 改为 `false`。 |
+| 想用固定自定义域名 | 设置 `tunnel.frp.publicHost = "你的域名"`，必要时再设 `tunnel.frp.publicPort`。 |
+
+`server/config.json` 相关字段：
+
+```json
+"tunnel": {
+  "frp": {
+    "configFile": "frpc.toml",     // 平台配置文件名（默认 server/frpc.toml）
+    "autoFixLocalPort": true,      // 自动纠正 localPort，改前备份 .bak
+    "publicHost": "",              // 非空时优先用它拼公网地址，例如 xxx.example.com
+    "publicPort": 0                // 0 = 使用平台 remotePort
+  }
+}
+```
+
+> ⚠️ **安全提醒**：`server/frpc.toml` 含真实 token，已加入 `.gitignore`；**千万不要把带 token 的配置提交或推送到 GitHub**，仓库里只保留占位符模板 `server/frpc.toml.example`。
 ## 5. 常见故障排查
 
 | 现象 | 原因 / 解决 |
@@ -247,6 +292,7 @@ server/
 ├── upnp.js              UPnP IGD + NAT-PMP 自动端口映射（纯 Node，新增）
 ├── tunnel.js            一键联动 cloudflared / ngrok / frpc（新增）
 ├── selftest-tunnel.js   内置穿透自测脚本（新增）
+├── frpc.toml.example    frpc TOML 配置模板（真实 server/frpc.toml 不入库）
 ├── 启动服务端.bat        Windows 双击启动（纯 ASCII，无 BOM）
 ├── start-server.sh       Linux / macOS 启动脚本
 └── README-联机.md        本文件
