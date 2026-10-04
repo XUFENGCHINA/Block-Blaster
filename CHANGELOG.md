@@ -7,20 +7,17 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-03
+
 ### ✨ 新增
 
-- **材质包系统**：主菜单新增「🎨 材质包」页面，支持安装 / 启用 / 停用 / 删除单个 `.bgpack`
-  （单个 JSON，图片以 data URI 内嵌，无 zip 依赖、无网络请求）。启用后可以更换**主界面背景**
-  （cover 铺满 + 保留暗色叠加保证文字可读）、按 `panels.mode` **隐藏或替换主菜单右侧面板**
-  （`html` 一律按纯文本渲染，防 XSS），并在**一个包内提供多套角色样式**随时点击切换——
-  有 `image` 时用 `drawImage` 画 30x30 头像并支持 `glow` 外发光，无图则用 `color/dark` 方块，
-  倒地 / 受伤 / 无敌闪烁等原有状态逻辑保持不变。
-- 新增存档接口 `Save.packs() / installPack() / removePack() / setActivePack() / activePack() /
-  setCharacterStyle() / characterStyle()`，含包格式校验（format/name/styles/mode/危险色值/非 data 图片）
-  与 4MB 容量上限明确报错；磁盘上的全部材质包见 `Save.data.packs`，当前启用见 `packActive / characterStyle`。
-- 新增打包工具 `tools/make-pack.py`（文件夹 → data URI → 单文件 `.bgpack`，可自动压缩图片）与
-  示例源目录 `tools/材质包示例/`（1 背景 + 2 套样式 + 示例包），完整格式与各平台安装说明见
-  `packaging/TEXTURE-PACK.md`。
+- 材质包系统（.bgpack）：可更换主界面背景、覆盖/隐藏主菜单侧边面板、一个包内含多套角色样式并可随时切换
+- tools/make-pack.py 打包工具 + tools/材质包示例/ 示例包 + packaging/TEXTURE-PACK.md 格式文档
+- Android：接入系统文件选择器，可在手机内直接安装 .bgpack（SAF，无需存储权限）
+
+### 🔧 修复
+
+- Service Worker 缓存版本升至 bg2d-v3（1.1.0 发版再 +1，因 manifest.webmanifest 也在预缓存列表），修复 PWA 更新后仍加载旧资源的问题
 
 ## [1.0.1] - 2026-10-03
 
