@@ -143,7 +143,13 @@ function goBook(){
   Game.stop(); show('book'); renderBook();
 }
 function goPack(){
-  Game.stop(); show('pack'); renderPack();
+  try { Game.stop(); } catch(e){}
+  try {
+    show('pack');
+    renderPack();
+  } catch(e){
+    toastMsg('打开材质包失败：' + ((e && e.message) ? e.message : '未知错误'));
+  }
 }
 function goBR(){
   Game.stop(); show('br'); renderBR();
@@ -182,6 +188,8 @@ function renderMenu(){
       '<div class="ms"><span>🪂 ' + esc(m.name) + '</span><b>' + brWins(m.id) + ' 胜</b></div>'
     ).join('') || '<div class="ms"><span>暂无战绩</span><b>0 胜</b></div>';
   }
+  const lvNote = $('menuLevelsNote');
+  if (lvNote) lvNote.textContent = '战役关卡 · ' + LEVELS.length + ' 关剧情挑战';
   refreshCoins();
   updatePackMenuNote();
   applyPackVisuals();
@@ -454,6 +462,10 @@ function updatePackMenuNote(){
   note.textContent = active ? ('当前：' + active.name + (cs ? ' · ' + cs.name : '')) : '未安装 · 换背景 / 面板 / 角色头像';
 }
 function renderPack(){
+  try { renderPackBody(); }
+  catch(e){ toastMsg('材质包页面渲染失败：' + ((e && e.message) ? e.message : '未知错误')); }
+}
+function renderPackBody(){
   const chip = $('packChipTxt');
   const active = (Save.activePack ? Save.activePack() : null);
   if (chip) chip.textContent = active ? active.name : '未安装';
@@ -538,7 +550,13 @@ function applyPackVisuals(){
   }
 }
 function goPack(){
-  Game.stop(); show('pack'); renderPack();
+  try { Game.stop(); } catch(e){}
+  try {
+    show('pack');
+    renderPack();
+  } catch(e){
+    toastMsg('打开材质包失败：' + ((e && e.message) ? e.message : '未知错误'));
+  }
 }
 
 /* ---------------- 商店 ---------------- */
@@ -1059,7 +1077,11 @@ function onAct(act, id, el){
     case 'shop': goShop(); break;
     case 'br': goBR(); break;
     case 'book': goBook(); break;
-    case 'pack': goPack(); break;
+    case 'pack': {
+      try { goPack(); }
+      catch(e){ toastMsg('打开材质包失败：' + ((e && e.message) ? e.message : '未知错误')); }
+      break;
+    }
     case 'pack-sample': installPackText(JSON.stringify(samplePack())); break;
     case 'pack-on': {
       if (Save.setActivePack(id)){

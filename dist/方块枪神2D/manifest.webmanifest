@@ -7,7 +7,7 @@
   "start_url": "./index.html",
   "scope": "./",
   "id": "./",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "display": "standalone",
   "display_override": ["standalone", "fullscreen"],
   "orientation": "landscape",

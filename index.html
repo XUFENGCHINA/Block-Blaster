@@ -68,19 +68,30 @@
           <h1>方块枪神<span>2D</span></h1>
           <p class="sub">你是方块，敌人也是方块。<br>拿起手枪，把它们全部打成碎片。</p>
           <div class="menu-btns">
-            <button class="btn big" data-act="levels">▶ 开 始 游 戏</button>
-            <div class="btn-note">战役关卡 · 8 关剧情挑战</div>
-            <button class="btn big diff" data-act="diff">🔥 难 度 关 卡</button>
-            <div class="btn-note">无限关卡 · 4 档难度 · 敌人开外挂</div>
-            <button class="btn big br" data-act="br">🪂 大逃杀</button>
-            <div class="btn-note">超大战场 · 杀光所有敌人 · 房屋捡枪</div>
-                        <button class="btn big net" data-act="net">🌐 联 机 合 作</button>
-            <div class="btn-note">局域网 / 内网穿透 · 2-4 人合作</div><button class="btn big ghost" data-act="shop">🛒 装 备 商 店</button>
-            <div class="btn-note">强化手枪 · 购买皮肤技能</div>
-            <button class="btn big book" data-act="book">📖 怪 物 图 鉴</button>
-            <div class="btn-note" id="menuDexNote">收录进度 0 / 0</div>
-            <button class="btn big pack" data-act="pack">🎨 材 质 包</button>
-            <div class="btn-note" id="menuPackNote">未安装 · 换背景 / 面板 / 角色头像</div>
+            <div class="menu-main">
+              <button class="btn big" data-act="levels">▶ 开 始 游 戏</button>
+              <div class="btn-note" id="menuLevelsNote">战役关卡 · 100 关剧情挑战</div>
+              <button class="btn big diff" data-act="diff">🔥 难 度 关 卡</button>
+              <div class="btn-note">无限关卡 · 4 档难度 · 敌人开外挂</div>
+              <button class="btn big br" data-act="br">🪂 大逃杀</button>
+              <div class="btn-note">超大战场 · 杀光所有敌人 · 房屋捡枪</div>
+              <button class="btn big net" data-act="net">🌐 联 机 合 作</button>
+              <div class="btn-note">局域网 / 内网穿透 · 2-4 人合作</div>
+            </div>
+            <div class="menu-mini">
+              <div class="menu-mini-item">
+                <button class="btn big ghost" data-act="shop">🛒 装 备 商 店</button>
+                <div class="btn-note">强化手枪 · 购买皮肤技能</div>
+              </div>
+              <div class="menu-mini-item">
+                <button class="btn big book" data-act="book">📖 怪 物 图 鉴</button>
+                <div class="btn-note" id="menuDexNote">收录进度 0 / 0</div>
+              </div>
+              <div class="menu-mini-item">
+                <button class="btn big pack" data-act="pack">🎨 材 质 包</button>
+                <div class="btn-note" id="menuPackNote">未安装 · 换背景 / 面板 / 角色头像</div>
+              </div>
+            </div>
             <button class="btn tiny install hide" id="btnInstall" data-act="install" type="button" title="安装到桌面">📲 安装到桌面</button>
           </div>
         </div>

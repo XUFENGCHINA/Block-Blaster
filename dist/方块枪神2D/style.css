@@ -646,3 +646,12 @@ body.touch .screen{
 @media (max-width:900px){
   .pack-list{ grid-template-columns:1fr; }
 }
+
+/* ---------------- 主菜单按钮重排（task-20）：4 大 + 3 小横排 ---------------- */
+.menu-btns{ max-width:21em; }
+.menu-main{ display:flex; flex-direction:column; gap:.15em; }
+.menu-mini{ display:grid; grid-template-columns:repeat(3, 1fr); gap:.45em; margin-top:.1em; }
+.menu-mini-item{ display:flex; flex-direction:column; min-width:0; }
+.menu-mini .btn{ width:100%; font-size:.78em; padding:.5em .15em; letter-spacing:.02em; white-space:nowrap; }
+.menu-mini .btn-note{ margin:.12em 0 0; font-size:.55em; line-height:1.35; min-height:2.6em; text-align:center; }
+.menu-left{ min-height:0; }
