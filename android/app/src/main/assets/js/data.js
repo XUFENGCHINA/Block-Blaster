@@ -375,12 +375,75 @@ function buildStats(){
 function getSkin(id){ for (const s of SKINS) if (s.id === id) return s; return SKINS[0]; }
 function getUpgrade(id){ for (const u of UPGRADES) if (u.id === id) return u; return null; }
 
+/* ---------------- 材质包：校验与规范化 ---------------- */
+const PACK_MAX_BYTES = 4 * 1024 * 1024;
+const PACK_TOO_BIG = '材质包过大（建议图片压缩到 1MB 内，单个存档上限 4MB）';
+const PACK_COLOR_RE = /^(#[0-9a-fA-F]{3,8}|rgba?\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*(?:,\s*[\d.]+\s*)?\)|hsla?\(\s*[\d.]+\s*,\s*[\d.]+%\s*,\s*[\d.]+%\s*(?:,\s*[\d.]+\s*)?\))$/;
+function packColor(v, fb){
+  const c = v == null ? '' : String(v).trim();
+  return PACK_COLOR_RE.test(c) ? c : fb;
+}
+function packImage(v){
+  if (typeof v !== 'string') return '';
+  const s = v.trim();
+  return /^data:image\//i.test(s) ? s : '';
+}
+function normalizePack(obj){
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return { ok:false, err:'材质包格式不对：根节点必须是 JSON 对象' };
+  if (obj.format != null && Number(obj.format) !== 1) return { ok:false, err:'不支持的材质包格式版本（format 应为 1）' };
+  const name = String(obj.name == null ? '' : obj.name).trim();
+  if (!name) return { ok:false, err:'材质包缺少 name（名称）' };
+  if (!Array.isArray(obj.styles) || obj.styles.length === 0) return { ok:false, err:'材质包缺少 styles（至少需要 1 套角色样式）' };
+  const styles = [];
+  for (let i = 0; i < obj.styles.length; i++){
+    const s = obj.styles[i];
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return { ok:false, err:'styles[' + i + '] 必须是对象' };
+    const sid = String(s.id == null ? '' : s.id).trim();
+    const sname = String(s.name == null ? '' : s.name).trim();
+    if (!sid) return { ok:false, err:'styles[' + i + '] 缺少 id' };
+    if (!sname) return { ok:false, err:'styles[' + i + '] 缺少 name' };
+    for (let j = 0; j < styles.length; j++) if (styles[j].id === sid) return { ok:false, err:'角色样式 id 重复：' + sid };
+    const simg = packImage(s.image);
+    if (simg.length > PACK_MAX_BYTES) return { ok:false, err:PACK_TOO_BIG };
+    styles.push({
+      id: sid.slice(0, 40),
+      name: sname.slice(0, 40),
+      color: packColor(s.color, '#35e0f5'),
+      dark: packColor(s.dark, '#0a2c3a'),
+      image: simg,
+      glow: !!s.glow
+    });
+  }
+  let panels = null;
+  if (obj.panels && typeof obj.panels === 'object' && !Array.isArray(obj.panels)){
+    const mode = obj.panels.mode == null ? 'keep' : String(obj.panels.mode);
+    if (['hide', 'replace', 'keep'].indexOf(mode) < 0) return { ok:false, err:'panels.mode 只能是 hide / replace / keep' };
+    const html = obj.panels.html == null ? '' : String(obj.panels.html);
+    const image = packImage(obj.panels.image);
+    if (image.length > PACK_MAX_BYTES) return { ok:false, err:PACK_TOO_BIG };
+    if (mode === 'replace' && !html && !image) return { ok:false, err:'panels.mode=replace 需要提供 html 或 image 内容' };
+    panels = { mode: mode, html: html.slice(0, 20000), image: image };
+  }
+  const background = packImage(obj.background);
+  if (background.length > PACK_MAX_BYTES) return { ok:false, err:PACK_TOO_BIG };
+  return { ok:true, pack: {
+    format: 1,
+    name: name.slice(0, 60),
+    author: String(obj.author == null ? '' : obj.author).trim().slice(0, 60) || '匿名',
+    version: String(obj.version == null ? '1.0' : obj.version).trim().slice(0, 20) || '1.0',
+    background: background,
+    panels: panels,
+    styles: styles,
+    installedAt: Date.now()
+  } };
+}
+
 /* ---------------- 存档 ---------------- */
 const SAVE_KEY = 'bg2d_save_v2';
 const Save = {
   data: null,
   defaults(){
-    return { coins:0, best:0, upgrades:{}, skins:['classic'], skin:'classic', levels:{}, endless:{}, br:{}, dex:{}, 
+    return { coins:0, best:0, upgrades:{}, skins:['classic'], skin:'classic', levels:{}, endless:{}, br:{}, dex:{}, packs:{}, packActive:null, characterStyle:null,
              kills:0, runs:0, muted:false };
   },
   load(){
@@ -440,6 +503,75 @@ const Save = {
   dexKinds(){ let n = 0; for (const k in ENEMY) n++; return n; },  brWins(id){ const b = this.data.br || (this.data.br = {}); return b[id] || 0; },
   addBRWin(id){ const b = this.data.br || (this.data.br = {}); b[id] = (b[id] || 0) + 1; this.save(); },
   brFirstWin(id){ return this.brWins(id) === 0; },  endlessBest(tier){ return this.data.endless[tier] || 0; },
-  setEndlessBest(tier, wave){ if (wave > this.endlessBest(tier)){ this.data.endless[tier] = wave; this.save(); } }
+  setEndlessBest(tier, wave){ if (wave > this.endlessBest(tier)){ this.data.endless[tier] = wave; this.save(); } },
+  /* ---------------- 材质包 ---------------- */
+  packs(){ return this.data.packs || (this.data.packs = {}); },
+  packList(){
+    const m = this.packs(), out = [];
+    for (const k in m) if (Object.prototype.hasOwnProperty.call(m, k)) out.push(m[k]);
+    out.sort(function(a, b){ return (b.installedAt || 0) - (a.installedAt || 0); });
+    return out;
+  },
+  activePack(){
+    const m = this.packs();
+    return (this.data.packActive && m[this.data.packActive]) ? m[this.data.packActive] : null;
+  },
+  setActivePack(id){
+    if (id == null || id === ''){
+      this.data.packActive = null; this.data.characterStyle = null; this.save(); return true;
+    }
+    const m = this.packs();
+    if (!m[id]) return false;
+    this.data.packActive = id;
+    const styles = m[id].styles || [];
+    let found = false;
+    for (let i = 0; i < styles.length; i++) if (styles[i].id === this.data.characterStyle){ found = true; break; }
+    if (!found) this.data.characterStyle = styles.length ? styles[0].id : null;
+    this.save();
+    return true;
+  },
+  removePack(id){
+    const m = this.packs();
+    if (!m[id]) return false;
+    delete m[id];
+    if (this.data.packActive === id){ this.data.packActive = null; this.data.characterStyle = null; }
+    this.save();
+    return true;
+  },
+  setCharacterStyle(styleId){
+    const p = this.activePack();
+    if (!p || !p.styles) return false;
+    for (let i = 0; i < p.styles.length; i++){
+      if (p.styles[i].id === styleId){ this.data.characterStyle = styleId; this.save(); return true; }
+    }
+    return false;
+  },
+  characterStyle(){
+    const p = this.activePack();
+    if (!p || !p.styles || !p.styles.length) return null;
+    for (let i = 0; i < p.styles.length; i++) if (p.styles[i].id === this.data.characterStyle) return p.styles[i];
+    return p.styles[0];
+  },
+  characterStyleId(){
+    const s = this.characterStyle();
+    return s ? s.id : null;
+  },
+  installPack(obj){
+    const v = normalizePack(obj);
+    if (!v.ok) return v;
+    const pack = v.pack, m = this.packs();
+    const id = pack.name + '@' + pack.version;
+    const old = m[id];
+    m[id] = pack;
+    try {
+      const json = JSON.stringify(this.data);
+      if (json.length > PACK_MAX_BYTES) throw new Error('too-big');
+      localStorage.setItem(SAVE_KEY, json);
+    } catch(e){
+      if (old) m[id] = old; else delete m[id];
+      return { ok:false, err:PACK_TOO_BIG };
+    }
+    return { ok:true, id: id, name: pack.name };
+  }
 };
 Save.load();

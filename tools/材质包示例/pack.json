@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "name": "示例 · 赛博方块",
+  "author": "Block Gunner 2D",
+  "version": "1.0",
+  "background": "background.png",
+  "panels": { "mode": "keep" },
+  "styles": [
+    { "id": "neon", "name": "霓虹战士", "color": "#35e0f5", "dark": "#0a2c3a", "image": "styles/neon.png", "glow": true },
+    { "id": "blaze", "name": "烈焰方块", "color": "#ff5b4a", "dark": "#4a1009", "image": "styles/blaze.png", "glow": true }
+  ]
+}

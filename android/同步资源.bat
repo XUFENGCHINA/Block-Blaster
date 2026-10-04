@@ -7,6 +7,6 @@ if not "%RC%"=="0" (
   echo [ERROR] asset sync failed with exit code %RC%.
   if not defined BG_NO_PAUSE pause
 ) else (
-  echo [OK] Web assets copied into android\app\src\main\assets\www
+  echo [OK] Web assets copied into android\app\src\main\assets
 )
 exit /b %RC%

@@ -5,7 +5,7 @@ const UI = (function(){
 'use strict';
 
 const $ = id => document.getElementById(id);
-const SCREENS = ['menu', 'levels', 'diff', 'br', 'shop', 'book', 'net', 'pause', 'result'];
+const SCREENS = ['menu', 'levels', 'diff', 'br', 'shop', 'book', 'pack', 'net', 'pause', 'result'];
 const LV_COLORS = ['#3ee06b','#35e0f5','#b06cff','#ffb03a','#ff8a3d','#4ad4ff','#ff6ad5','#ff3355'];
 let cur = null, shopTab = 'gear', selectedBookFilter = 'all', selTier = 1, selectedMap = 1, autoTimer = null, autoLeft = 0;
 let netMode = 'campaign', netStatusMsg = '', netStarted = false, netPendingConfig = null;
@@ -122,6 +122,7 @@ function back(){
   else if (cur === 'shop') goMenu();
   else if (cur === 'result') goMenu();
   else if (cur === 'book') goMenu();
+  else if (cur === 'pack') goMenu();
   else goMenu();
 }
 function goMenu(){
@@ -140,6 +141,9 @@ function goShop(){
 }
 function goBook(){
   Game.stop(); show('book'); renderBook();
+}
+function goPack(){
+  Game.stop(); show('pack'); renderPack();
 }
 function goBR(){
   Game.stop(); show('br'); renderBR();
@@ -179,6 +183,8 @@ function renderMenu(){
     ).join('') || '<div class="ms"><span>暂无战绩</span><b>0 胜</b></div>';
   }
   refreshCoins();
+  updatePackMenuNote();
+  applyPackVisuals();
   // PWA：主菜单「📲 安装到桌面」按钮只在可安装 / iOS 时显示
   if (typeof PWA !== 'undefined' && PWA && PWA.updateInstallButton) PWA.updateInstallButton();
 }
@@ -347,6 +353,192 @@ function renderBook(){
     const el = $(tabIds[i]);
     if (el) el.classList.toggle('on', selectedBookFilter === tabVals[i]);
   }
+}
+
+/* ---------------- 材质包 ---------------- */
+function svgDataUri(svg){
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg).replace(/[()']/g, function(c){
+    return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+  });
+}
+function samplePack(){
+  const bg = svgDataUri('<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540">' +
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#0d1730"/><stop offset="0.55" stop-color="#231243"/><stop offset="1" stop-color="#081a2c"/>' +
+    '</linearGradient></defs><rect width="960" height="540" fill="url(#g)"/>' +
+    '<g stroke="#35e0f5" stroke-opacity="0.14" stroke-width="2" fill="none">' +
+    '<path d="M0 135H960M0 270H960M0 405H960M240 0V540M480 0V540M720 0V540"/></g>' +
+    '<circle cx="480" cy="270" r="180" fill="#b06cff" fill-opacity="0.10"/></svg>');
+  const avatar = svgDataUri('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32">' +
+    '<rect width="32" height="32" rx="6" fill="#35e0f5"/>' +
+    '<rect x="5" y="5" width="22" height="22" rx="3" fill="#0a2c3a"/>' +
+    '<rect x="10" y="12" width="4" height="5" fill="#9ff6ff"/><rect x="18" y="12" width="4" height="5" fill="#9ff6ff"/>' +
+    '<rect x="11" y="21" width="10" height="2" fill="#35e0f5"/></svg>');
+  return {
+    format: 1,
+    name: '示例 · 赛博方块',
+    author: 'Block Gunner 2D',
+    version: '1.0',
+    background: bg,
+    panels: { mode: 'replace', html: '这是示例材质包替换后的主菜单面板。\n把 panels.mode 改成 hide 可以隐藏右侧所有面板，改成 keep 则保持原样。\n（安全起见，这里的内容按纯文本显示，不会执行 HTML。）' },
+    styles: [
+      { id: 'neon', name: '霓虹战士', color: '#35e0f5', dark: '#0a2c3a', image: avatar, glow: true },
+      { id: 'blaze', name: '烈焰方块', color: '#ff5b4a', dark: '#4a1009', glow: true }
+    ]
+  };
+}
+function packSafeImage(src){
+  return (typeof src === 'string' && /^data:image\//i.test(src)) ? src : '';
+}
+function packPreviewColor(c){
+  const s = (typeof c === 'string') ? c.trim() : '';
+  return /^(#[0-9a-fA-F]{3,8}|rgba?\([\d.,\s]+\)|hsla?\([\d.,%\s]+\))$/.test(s) ? s : '#35e0f5';
+}
+function installPackText(text){
+  let obj = null;
+  try { obj = JSON.parse(String(text)); }
+  catch(e){ toastMsg('安装失败：不是有效的 JSON 文件'); return false; }
+  if (!Save || typeof Save.installPack !== 'function'){ toastMsg('安装失败：存档接口不可用'); return false; }
+  const r = Save.installPack(obj);
+  if (!r || !r.ok){ toastMsg('安装失败：' + ((r && r.err) || '未知错误')); return false; }
+  if (Game && Game.sfx && Game.sfx.pickup) Game.sfx.pickup();
+  toastMsg('材质包已安装：' + r.name);
+  renderPack();
+  return true;
+}
+function onPackFilePicked(e){
+  const input = e && e.target;
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  if (file.size && file.size > 4 * 1024 * 1024){
+    toastMsg('材质包过大（建议图片压缩到 1MB 内）');
+    try { input.value = ''; } catch(err){}
+    return;
+  }
+  if (typeof FileReader !== 'function'){ toastMsg('当前环境不支持读取本地文件'); return; }
+  let fr = null;
+  try { fr = new FileReader(); }
+  catch(err){ toastMsg('当前环境不支持读取本地文件'); return; }
+  fr.onload = function(){
+    installPackText(fr.result);
+    try { input.value = ''; } catch(err){}
+  };
+  fr.onerror = function(){
+    toastMsg('材质包读取失败，请重试');
+    try { input.value = ''; } catch(err){}
+  };
+  try { fr.readAsText(file, 'utf-8'); }
+  catch(err){ toastMsg('材质包读取失败：' + ((err && err.message) ? err.message : '未知错误')); }
+}
+function clearNode(el){ while (el.firstChild) el.removeChild(el.firstChild); }
+function packRow(pack, id){
+  const active = Save.data.packActive === id;
+  const styles = (pack.styles || []).length;
+  return '<div class="card pack-item' + (active ? ' on' : '') + '">' +
+    '<div class="pack-item-head"><b class="pack-item-name">' + esc(pack.name) + '</b>' +
+      (active ? '<span class="pack-badge">使用中</span>' : '') + '</div>' +
+    '<div class="pack-meta">作者 ' + esc(pack.author || '匿名') + ' · v' + esc(pack.version || '1.0') + ' · ' + styles + ' 套样式</div>' +
+    '<div class="pack-btns">' +
+      (active
+        ? '<button class="btn tiny ghost" data-act="pack-off">停用</button>'
+        : '<button class="btn tiny" data-act="pack-on" data-id="' + esc(id) + '">启用</button>') +
+      '<button class="btn tiny ghost danger" data-act="pack-del" data-id="' + esc(id) + '">删除</button>' +
+    '</div>' +
+  '</div>';
+}
+function updatePackMenuNote(){
+  const note = $('menuPackNote');
+  if (!note) return;
+  const active = (Save.activePack ? Save.activePack() : null);
+  const cs = (Save.characterStyle ? Save.characterStyle() : null);
+  note.textContent = active ? ('当前：' + active.name + (cs ? ' · ' + cs.name : '')) : '未安装 · 换背景 / 面板 / 角色头像';
+}
+function renderPack(){
+  const chip = $('packChipTxt');
+  const active = (Save.activePack ? Save.activePack() : null);
+  if (chip) chip.textContent = active ? active.name : '未安装';
+  const box = $('packList');
+  if (box){
+    const list = Save.packs(), ids = Object.keys(list);
+    if (ids.length){
+      let html = '';
+      for (let i = 0; i < ids.length; i++) html += packRow(list[ids[i]], ids[i]);
+      box.innerHTML = html;
+    } else {
+      box.innerHTML = '<div class="pack-empty">还没有安装材质包。点上面的「选择 .bgpack 文件」，或先用「载入示例包」看看效果。</div>';
+    }
+  }
+  const sg = $('packStyles');
+  if (sg){
+    if (active && active.styles && active.styles.length){
+      const cur = (Save.characterStyle ? Save.characterStyle() : null);
+      let html = '';
+      for (let i = 0; i < active.styles.length; i++){
+        const s = active.styles[i];
+        const img = packSafeImage(s.image);
+        const on = cur && cur.id === s.id;
+        html += '<div class="card pack-style' + (on ? ' on' : '') + '" data-act="pack-style" data-id="' + esc(s.id) + '">' +
+          '<div class="pack-style-pv">' + (img
+            ? '<img src="' + esc(img) + '" alt="">'
+            : '<i style="--c:' + esc(packPreviewColor(s.color)) + '"></i>') + '</div>' +
+          '<div class="pack-style-name">' + esc(s.name) + '</div>' +
+          (s.glow ? '<div class="pack-style-tag">✦ 发光</div>' : '') +
+        '</div>';
+      }
+      sg.innerHTML = '<div class="pack-style-grid">' + html + '</div>';
+    } else {
+      sg.innerHTML = '<div class="pack-empty">启用一个材质包后，这里会显示它的全部角色样式，点击即可切换当前角色外观。</div>';
+    }
+  }
+  updatePackMenuNote();
+  applyPackVisuals();
+}
+function applyPackVisuals(){
+  if (typeof Save === 'undefined' || !Save || !Save.data) return;
+  const active = (Save.activePack ? Save.activePack() : null);
+  const bg = (active && active.background) ? active.background : '';
+  const ov = $('overlay');
+  if (ov){
+    ov.classList.toggle('pack-bg', !!bg);
+    try {
+      if (bg) ov.style.setProperty('--pack-bg', 'url("' + bg.replace(/["\\\r\n]/g, '') + '")');
+      else ov.style.removeProperty('--pack-bg');
+    } catch(e){}
+  }
+  const panels = (active && active.panels) ? active.panels : null;
+  const mode = panels ? panels.mode : 'keep';
+  const mr = $('menuRight');
+  if (mr){
+    mr.classList.toggle('panels-hidden', mode === 'hide');
+    mr.classList.toggle('pack-replaced', mode === 'replace');
+  }
+  const slot = $('menuPackPanel');
+  if (slot){
+    if (mode === 'replace' && panels){
+      slot.hidden = false;
+      clearNode(slot);
+      const imgSrc = packSafeImage(panels.image);
+      if (imgSrc){
+        const img = document.createElement('img');
+        img.className = 'pack-panel-img';
+        img.alt = active ? active.name : '材质包面板';
+        img.src = imgSrc;
+        slot.appendChild(img);
+      }
+      if (panels.html){
+        const txt = document.createElement('div');
+        txt.className = 'pack-panel-text';
+        txt.textContent = String(panels.html);   // 安全：纯文本写入，绝不 innerHTML
+        slot.appendChild(txt);
+      }
+    } else {
+      slot.hidden = true;
+      slot.textContent = '';
+    }
+  }
+}
+function goPack(){
+  Game.stop(); show('pack'); renderPack();
 }
 
 /* ---------------- 商店 ---------------- */
@@ -867,6 +1059,36 @@ function onAct(act, id, el){
     case 'shop': goShop(); break;
     case 'br': goBR(); break;
     case 'book': goBook(); break;
+    case 'pack': goPack(); break;
+    case 'pack-sample': installPackText(JSON.stringify(samplePack())); break;
+    case 'pack-on': {
+      if (Save.setActivePack(id)){
+        if (Game.sfx && Game.sfx.pickup) Game.sfx.pickup();
+        toastMsg('已启用材质包');
+      } else toastMsg('启用失败：材质包不存在');
+      renderPack();
+      break;
+    }
+    case 'pack-off': {
+      Save.setActivePack(null);
+      toastMsg('已停用材质包');
+      renderPack();
+      break;
+    }
+    case 'pack-del': {
+      if (Save.removePack(id)) toastMsg('已删除材质包');
+      else toastMsg('删除失败：材质包不存在');
+      renderPack();
+      break;
+    }
+    case 'pack-style': {
+      if (Save.setCharacterStyle(id)){
+        if (Game.sfx && Game.sfx.blip) Game.sfx.blip(600, 1200, 0.08, 'sine', 0.06);
+        toastMsg('已切换角色样式');
+      } else toastMsg('切换失败：该样式不存在');
+      renderPack();
+      break;
+    }
     case 'net': goNet(); break;
     case 'net-create': netDoCreate(); break;
     case 'net-join': netDoJoin(); break;
@@ -991,6 +1213,8 @@ function bind(){
   if (codeInput) codeInput.addEventListener('input', () => { codeInput.value = cleanNetCode(codeInput.value); });
   const nameInput = $('netName');
   if (nameInput) nameInput.addEventListener('change', () => { storeNetName(netNameValue()); });
+  const packFile = $('packFile');
+  if (packFile) packFile.addEventListener('change', onPackFilePicked);
   bindNet();
 }
 
@@ -1054,6 +1278,7 @@ function init(){
   const netHash = (typeof Net !== 'undefined' && Net.parseHash) ? Net.parseHash() : { screen: null, join: null };
   if (hash === '#br') goBR();
   else if (hash === '#book') goBook();
+  else if (hash === '#pack') goPack();
   else if (netHash && netHash.screen === 'net'){
     const codeEl = $('netCode');
     if (codeEl && netHash.join) codeEl.value = netHash.join;   // #join=ABCD 深链预填房间码
@@ -1061,9 +1286,9 @@ function init(){
     if (netHash.join && netAvailable() && Net.status() === 'online') netDoJoin();   // 已连接则直接加入
   }
   else goMenu();
-  if (hash === '#br' || hash === '#book' || (netHash && netHash.screen === 'net')) renderMenu();   // 深链进入时也刷新主菜单图鉴进度
+  if (hash === '#br' || hash === '#book' || hash === '#pack' || (netHash && netHash.screen === 'net')) renderMenu();   // 深链进入时也刷新主菜单图鉴进度
 }
-return { init: init, show: show, goMenu: goMenu, goLevels: goLevels, goDiff: goDiff, goBR: goBR, goShop: goShop, goBook: goBook, goNet: goNet,
+return { init: init, show: show, goMenu: goMenu, goLevels: goLevels, goDiff: goDiff, goBR: goBR, goShop: goShop, goBook: goBook, goPack: goPack, goNet: goNet,
          refreshCoins: refreshCoins, toast: toastMsg,
          updateViewport: updateViewport, toggleFull: toggleFull, isTouchDevice: isTouchDevice };
 })();

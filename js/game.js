@@ -1314,9 +1314,45 @@ function drawEnemy(e){
     ctx.fillRect(bx, by, bw * k, bh);
   }
 }
+/* ---------------- 材质包：角色贴图缓存（纯视觉） ---------------- */
+const TEX_IMG_CACHE = Object.create(null);   // dataURI -> { img, ready, failed }
+function activeTextureStyle(){
+  try {
+    if (typeof Save !== 'undefined' && Save && typeof Save.characterStyle === 'function') return Save.characterStyle();
+  } catch(e){}
+  return null;
+}
+function textureImage(style){
+  const src = style && style.image;
+  if (!src) return null;
+  let rec = TEX_IMG_CACHE[src];
+  if (!rec){
+    rec = { img: null, ready: false, failed: false };
+    TEX_IMG_CACHE[src] = rec;
+    if (typeof Image === 'function'){
+      try {
+        const img = new Image();
+        img.onload = function(){ rec.ready = true; };
+        img.onerror = function(){ rec.failed = true; };
+        img.src = src;
+        rec.img = img;
+      } catch(e){ rec.failed = true; }
+    } else {
+      rec.failed = true;   // Node 测试桩等无 Image 环境：自动回退 color 方块
+    }
+  }
+  if (!G.texCache) G.texCache = Object.create(null);
+  if (style && style.id != null) G.texCache[style.id] = rec;   // 预加载缓存，方便探针读取
+  return (rec.ready && rec.img) ? rec.img : null;
+}
+
 function drawPlayer(){
   const p = G.player, st = RUN ? RUN.st : null; if (!p || p.dead) return;
-  const col = st ? st.color : '#35e0f5', dark = st ? st.dark : '#0a2c3a';
+  const packStyle = activeTextureStyle();
+  const packTex = packStyle ? textureImage(packStyle) : null;
+  const packGlow = !!(packStyle && packStyle.glow);
+  const col = (packStyle && packStyle.color) ? packStyle.color : (st ? st.color : '#35e0f5');
+  const dark = (packStyle && packStyle.dark) ? packStyle.dark : (st ? st.dark : '#0a2c3a');
   for (let i = 0; i < G.ghosts.length; i++){
     const g = G.ghosts[i], k = g.life / g.max;
     ctx.save(); ctx.globalAlpha = k * 0.4; ctx.fillStyle = col;
@@ -1348,14 +1384,25 @@ function drawPlayer(){
   }
   ctx.restore();
   ctx.save(); ctx.translate(p.x, p.y);
-  ctx.fillStyle = dark; ctx.fillRect(-17, -17, 34, 34);
-  ctx.fillStyle = p.hurt > 0 ? '#ff9db0' : col; ctx.fillRect(-15, -15, 30, 30);
-  ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(-15, -15, 30, 7);
+  if (packTex){
+    if (packGlow){ ctx.shadowColor = col; ctx.shadowBlur = 14; }
+    ctx.drawImage(packTex, -15, -15, 30, 30);
+    ctx.shadowBlur = 0;
+    if (p.hurt > 0){ ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = '#ff9db0'; ctx.fillRect(-15, -15, 30, 30); ctx.restore(); }
+    if (packGlow){
+      ctx.save(); ctx.globalAlpha = 0.85; ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+      ctx.strokeRect(-15.5, -15.5, 31, 31); ctx.restore();
+    }
+  } else {
+    ctx.fillStyle = dark; ctx.fillRect(-17, -17, 34, 34);
+    ctx.fillStyle = p.hurt > 0 ? '#ff9db0' : col; ctx.fillRect(-15, -15, 30, 30);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fillRect(-15, -15, 30, 7);
+    ctx.fillStyle = dark; ctx.fillRect(-5, -5, 10, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(-3, -3, 6, 6);
+  }
   ctx.save(); ctx.rotate(p.aim);
   ctx.fillStyle = dark; ctx.fillRect(2, -7, 7, 4); ctx.fillRect(2, 3, 7, 4);
   ctx.restore();
-  ctx.fillStyle = dark; ctx.fillRect(-5, -5, 10, 10);
-  ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillRect(-3, -3, 6, 6);
   ctx.restore();
   if (p.rage > 0){
     ctx.globalAlpha = clamp(p.rage / 10, 0.2, 0.7);
@@ -1372,16 +1419,28 @@ function drawPlayer(){
 }
 function drawRemote(r){
   const s = 30, h = 15;
+  const packStyle = activeTextureStyle();
+  const packTex = (!r.down && packStyle) ? textureImage(packStyle) : null;
+  const packGlow = !!(packStyle && packStyle.glow);
+  const packCol = (packStyle && packStyle.color) ? packStyle.color : (r.color || '#a6ffcf');
+  const packDark = (packStyle && packStyle.dark) ? packStyle.dark : '#0d2230';
   ctx.save(); ctx.translate(r.x, r.y);
   ctx.fillStyle = 'rgba(0,0,0,0.32)'; ctx.fillRect(-h + 3, -h + 5, s, s);
-  ctx.fillStyle = '#0d2230'; ctx.fillRect(-h - 2, -h - 2, s + 4, s + 4);
-  ctx.fillStyle = r.down ? '#5a6b7d' : (r.hurt > 0 ? '#ff9db0' : (r.color || '#a6ffcf'));
-  ctx.fillRect(-h, -h, s, s);
+  ctx.fillStyle = packDark; ctx.fillRect(-h - 2, -h - 2, s + 4, s + 4);
+  if (packTex){
+    if (packGlow){ ctx.shadowColor = packCol; ctx.shadowBlur = 12; }
+    ctx.drawImage(packTex, -h, -h, s, s);
+    ctx.shadowBlur = 0;
+    if (r.hurt > 0){ ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = '#ff9db0'; ctx.fillRect(-h, -h, s, s); ctx.restore(); }
+  } else {
+    ctx.fillStyle = r.down ? '#5a6b7d' : (r.hurt > 0 ? '#ff9db0' : packCol);
+    ctx.fillRect(-h, -h, s, s);
+  }
   ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-h, -h, s, 7);
   ctx.save(); ctx.rotate(r.aim || 0);
   ctx.fillStyle = '#20303f'; ctx.fillRect(4, -4.5, 20, 9);
   ctx.restore();
-  if (!r.down){
+  if (!r.down && !packTex){
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(-h + 4, -h + 8, 5, 5); ctx.fillRect(h - 9, -h + 8, 5, 5);
   }
@@ -1399,7 +1458,7 @@ function drawRemote(r){
   }
   ctx.save(); ctx.font = '700 12px "Segoe UI",system-ui,sans-serif'; ctx.textAlign = 'center';
   ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(4,8,14,0.85)';
-  ctx.strokeText(r.name || '', r.x, r.y + 30); ctx.fillStyle = r.color || '#a6ffcf';
+  ctx.strokeText(r.name || '', r.x, r.y + 30); ctx.fillStyle = packCol;
   ctx.fillText(r.name || '', r.x, r.y + 30); ctx.restore();
 }
 function drawBullets(){

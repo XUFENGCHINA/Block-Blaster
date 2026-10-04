@@ -2,7 +2,9 @@ package com.blockgunner2d.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.graphics.drawable.GradientDrawable;
@@ -17,6 +19,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -25,6 +28,7 @@ import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  * Block Gunner 2D Android shell.
@@ -47,6 +51,7 @@ public class MainActivity extends Activity {
     private static final String KEY_SERVER = "server_url";
     private static final int BASE_PORT = 8080;
     private static final long STATE_POLL_MS = 1000L;
+    private static final int FILE_CHOOSER_REQUEST = 1001;
 
     /** Returns 'show' only on the main menu / pause screen; otherwise the raw game state. */
     private static final String STATE_JS =
@@ -66,6 +71,7 @@ public class MainActivity extends Activity {
     private Button connectButton;
     private Handler uiHandler;
     private boolean statePolling = false;
+    private ValueCallback<Uri[]> filePathCallback;
 
     private final Runnable statePoller = new Runnable() {
         public void run() {
@@ -95,7 +101,7 @@ public class MainActivity extends Activity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(true);
+        settings.setAllowFileAccess(false); // 资源走 http://127.0.0.1；assets 兜底页仍可用 file:///android_asset
         settings.setLoadsImagesAutomatically(true);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(false);
@@ -109,6 +115,32 @@ public class MainActivity extends Activity {
                 }
                 injectServerParam();
                 pollGameState();
+            }
+        });
+
+        // 材质包安装需要系统文件选择器：onShowFileChooser + ACTION_GET_CONTENT（SAF）
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (filePathCallback != null) {
+                    filePathCallback.onReceiveValue(null);
+                    filePathCallback = null;
+                }
+                filePathCallback = callback;
+                try {
+                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    // 不按 accept 过滤：.bgpack 没有注册 MIME 类型，过滤会把包藏起来；页面会自行校验格式
+                    intent.setType("*/*");
+                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivityForResult(Intent.createChooser(intent, "选择材质包（.bgpack / .json）"), FILE_CHOOSER_REQUEST);
+                    return true;
+                } catch (Exception e) {
+                    filePathCallback = null;
+                    Toast.makeText(MainActivity.this, "无法打开文件选择器：" + (e.getMessage() == null ? "未知错误" : e.getMessage()), Toast.LENGTH_LONG).show();
+                    return false;
+                }
             }
         });
 
@@ -328,6 +360,39 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == FILE_CHOOSER_REQUEST) {
+            ValueCallback<Uri[]> callback = filePathCallback;
+            filePathCallback = null;
+            Uri[] results = null;
+            if (resultCode == RESULT_OK && data != null) {
+                results = WebChromeClient.FileChooserParams.parseResult(resultCode, data);
+                if (results == null || results.length == 0) {
+                    ClipData clip = data.getClipData();
+                    if (clip != null && clip.getItemCount() > 0) {
+                        ArrayList<Uri> uris = new ArrayList<Uri>();
+                        for (int i = 0; i < clip.getItemCount(); i++) {
+                            Uri uri = clip.getItemAt(i).getUri();
+                            if (uri != null) {
+                                uris.add(uri);
+                            }
+                        }
+                        results = uris.toArray(new Uri[uris.size()]);
+                    } else if (data.getData() != null) {
+                        results = new Uri[] { data.getData() };
+                    }
+                }
+            }
+            if (callback != null) {
+                // null = 用户取消 / 无结果；WebView 会安全地把 input 置空
+                callback.onReceiveValue(results);
+            }
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
     public void onBackPressed() {
         if (serverDialog != null && serverDialog.isShowing()) {
             serverDialog.dismiss();
@@ -379,6 +444,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (filePathCallback != null) {
+            try { filePathCallback.onReceiveValue(null); } catch (Throwable ignored) { }
+            filePathCallback = null;
+        }
         stopStatePolling();
         if (serverDialog != null) {
             try { serverDialog.dismiss(); } catch (Throwable ignored) { }

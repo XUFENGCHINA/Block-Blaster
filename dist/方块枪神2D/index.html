@@ -79,10 +79,13 @@
             <div class="btn-note">强化手枪 · 购买皮肤技能</div>
             <button class="btn big book" data-act="book">📖 怪 物 图 鉴</button>
             <div class="btn-note" id="menuDexNote">收录进度 0 / 0</div>
+            <button class="btn big pack" data-act="pack">🎨 材 质 包</button>
+            <div class="btn-note" id="menuPackNote">未安装 · 换背景 / 面板 / 角色头像</div>
             <button class="btn tiny install hide" id="btnInstall" data-act="install" type="button" title="安装到桌面">📲 安装到桌面</button>
           </div>
         </div>
-        <div class="menu-right">
+        <div class="menu-right" id="menuRight">
+          <div class="panel pack-panel" id="menuPackPanel" hidden></div>
           <div class="panel">
             <div class="panel-title">📊 我的数据</div>
             <div class="menu-stats" id="menuStats"></div>
@@ -194,7 +197,35 @@
     </section>
 
     <!-- 暂停 -->
-        <!-- 联机合作 -->
+        <!-- 材质包 -->
+    <section class="screen" id="scrPack">
+      <div class="bar-top">
+        <button class="btn tiny ghost" data-act="menu">← 返回主页面</button>
+        <div class="bar-title">材质包</div>
+        <div class="bar-right"><span class="chip" id="packChip"><span class="ico">🎨</span><b id="packChipTxt">未安装</b></span></div>
+      </div>
+      <div class="scroll">
+        <div class="card pack-section">
+          <div class="pack-title">📦 安装材质包</div>
+          <div class="pack-hint">支持单个 .bgpack / .json 文件（图片以 data URI 内嵌，单个文件最大 4MB）。选择后会立即解析安装；格式不对会给出提示。</div>
+          <div class="pack-install-row">
+            <label class="btn small" for="packFile">📁 选择 .bgpack 文件</label>
+            <input type="file" id="packFile" class="pack-file" accept=".bgpack,.json,application/json">
+            <button class="btn tiny ghost" data-act="pack-sample">✨ 载入示例包</button>
+          </div>
+        </div>
+        <div class="card pack-section">
+          <div class="pack-title">🗂️ 已安装材质包</div>
+          <div class="pack-list" id="packList"></div>
+        </div>
+        <div class="card pack-section">
+          <div class="pack-title">🧍 角色样式（点击切换）</div>
+          <div id="packStyles"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 联机合作 -->
     <section class="screen" id="scrNet">
       <div class="bar-top">
         <button class="btn tiny ghost" data-act="menu">← 返回主页面</button>
