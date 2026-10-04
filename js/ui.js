@@ -505,17 +505,71 @@ function renderPackBody(){
   updatePackMenuNote();
   applyPackVisuals();
 }
+let packBgObjectUrl = '';
+let packBgSourceKey = '';
+function releasePackBgUrl(){
+  if (packBgObjectUrl){
+    try { if (typeof URL !== 'undefined' && URL.revokeObjectURL) URL.revokeObjectURL(packBgObjectUrl); } catch(e){}
+    packBgObjectUrl = ''; packBgSourceKey = '';
+  }
+}
+function makePackBgUrl(uri){
+  if (typeof uri !== 'string' || uri.indexOf('data:image/') !== 0) return '';
+  try {
+    if (typeof Blob === 'function' && typeof URL !== 'undefined' && URL.createObjectURL){
+      const comma = uri.indexOf(',');
+      if (comma > 0){
+        const meta = uri.slice(5, comma);
+        const isB64 = /;base64/i.test(meta);
+        const mime = (meta.split(';')[0] || 'image/png');
+        let bytes = null;
+        if (isB64){
+          const bin = atob(uri.slice(comma + 1));
+          const n = bin.length;
+          bytes = new Uint8Array(n);
+          for (let i = 0; i < n; i++) bytes[i] = bin.charCodeAt(i);
+        } else {
+          bytes = new TextEncoder().encode(decodeURIComponent(uri.slice(comma + 1)));
+        }
+        return URL.createObjectURL(new Blob([bytes], { type: mime }));
+      }
+    }
+  } catch(e){ return ''; }
+  return '';
+}
+function packBgUrl(bg){
+  if (!bg){ releasePackBgUrl(); return ''; }
+  if (bg === packBgSourceKey && packBgObjectUrl) return packBgObjectUrl;
+  releasePackBgUrl();
+  let url = makePackBgUrl(bg);
+  if (!url && bg.length <= 1000000) url = bg;   // 无 Blob 环境 / 小图：退回 data URI
+  if (url){ packBgSourceKey = bg; packBgObjectUrl = url; }
+  return url;
+}
 function applyPackVisuals(){
   if (typeof Save === 'undefined' || !Save || !Save.data) return;
   const active = (Save.activePack ? Save.activePack() : null);
   const bg = (active && active.background) ? active.background : '';
+  const stage = $('stage');
   const ov = $('overlay');
-  if (ov){
-    ov.classList.toggle('pack-bg', !!bg);
+  const packBgDisp = packBgUrl(bg);
+  if (ov) ov.classList.toggle('pack-bg', !!bg);   // 兼容旧类名；像素可见层是 .screen
+  if (stage){
+    stage.classList.toggle('pack-bg', !!bg);
     try {
-      if (bg) ov.style.setProperty('--pack-bg', 'url("' + bg.replace(/["\\\r\n]/g, '') + '")');
-      else ov.style.removeProperty('--pack-bg');
-    } catch(e){}
+      if (bg && packBgDisp){
+        stage.style.setProperty('--pack-bg', 'url("' + packBgDisp.replace(/["\\\r\n]/g, '') + '")');
+        if (!stage.style.getPropertyValue('--pack-bg')){
+          toastMsg('背景图过大或格式不支持，未能应用（建议压到 1MB 内）');
+          stage.classList.remove('pack-bg');
+        }
+      } else {
+        stage.style.removeProperty('--pack-bg');
+      }
+    } catch(e){
+      stage.classList.remove('pack-bg');
+      toastMsg('背景图应用失败：' + ((e && e.message) ? e.message : '未知错误'));
+    }
   }
   const panels = (active && active.panels) ? active.panels : null;
   const mode = panels ? panels.mode : 'keep';

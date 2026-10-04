@@ -596,12 +596,17 @@ body.touch .screen{
   box-shadow:0 4px 0 #8a4d05, 0 10px 22px rgba(255,159,46,.35); }
 .btn.pack:hover{ box-shadow:0 5px 0 #8a4d05, 0 14px 26px rgba(255,159,46,.48); }
 
-/* 主界面背景：data URI 由 JS 写入 --pack-bg；保留暗色叠加保证文字可读 */
-#overlay.pack-bg{
-  background-image:linear-gradient(180deg, rgba(4,7,13,.78), rgba(4,7,13,.9)), var(--pack-bg, none);
-  background-size:cover, cover; background-position:center, center; background-repeat:no-repeat;
+/* 主界面背景：data/blob URL 由 JS 写入 --pack-bg（url("...")）；
+   直接叠加在 .screen 自身渐变之上，避免被 .screen 不透明 radial-gradient 盖住 */
+#stage.pack-bg .screen{
+  background-image:linear-gradient(180deg, rgba(4,7,13,.72), rgba(4,7,13,.9)), var(--pack-bg, none);
+  background-size:cover, cover;
+  background-position:center, center;
+  background-repeat:no-repeat, no-repeat;
+  backdrop-filter:none;
 }
-#overlay.pack-bg .screen{ background:transparent; backdrop-filter:none; }
+/* 兼容旧类名：overlay 保留暗色底，避免切换瞬间露白 */
+#overlay.pack-bg{ background-color:#05080f; }
 
 /* 主菜单右侧面板：hide / replace */
 .menu-right.panels-hidden > .panel{ display:none; }

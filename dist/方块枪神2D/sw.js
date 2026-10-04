@@ -7,7 +7,7 @@
 
 /* Release process: bump this version (+1) whenever web assets change,
    otherwise installed PWAs keep serving the old cache-first files. */
-var CACHE_NAME = 'bg2d-v4';
+var CACHE_NAME = 'bg2d-v5';
 var PRECACHE = [
   './',
   './index.html',

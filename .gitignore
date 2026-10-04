@@ -38,3 +38,6 @@ server/frpc.ini.bak
 **/frpc.toml.bak
 **/frpc.ini
 **/frpc.ini.bak
+# 用户自用材质包（含第三方版权图片，不入库）
+/材质包/
+*.bgpack

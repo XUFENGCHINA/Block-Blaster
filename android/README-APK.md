@@ -134,7 +134,7 @@ WebView 再打开这个地址，于是：
 > 格式不对会给出提示。制作方法见 `packaging/TEXTURE-PACK.md`。
 
 > **发版注意（PWA / 网页端）**：只要改动了 `index.html` / `style.css` / `js/*` 等网页资源，
-> 就必须把 `sw.js` 里的 `CACHE_NAME` 版本号 +1（当前 `bg2d-v4`，下次 `bg2d-v5`），否则已安装
+> 就必须把 `sw.js` 里的 `CACHE_NAME` 版本号 +1（当前 `bg2d-v5`，下次 `bg2d-v6`），否则已安装
 > PWA 会因「缓存优先」继续使用旧页面，新的材质包入口可能根本不出现。
 
 ## 六、已知限制
