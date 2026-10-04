@@ -384,10 +384,16 @@ function handleTunnelApi(req, res, pathname) {
 function serveFile(req, res, filePath, stat) {
   const ext = path.extname(filePath).toLowerCase();
   const type = MIME_TYPES[ext] || 'application/octet-stream';
+  // 代码类资源必须每次校验：否则更新后浏览器/Service Worker 会继续用旧 html/css/js
+  const NO_CACHE_EXTS = ['.html', '.htm', '.css', '.js', '.mjs', '.webmanifest'];
+  const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.bmp'];
+  const cacheControl = NO_CACHE_EXTS.indexOf(ext) >= 0
+    ? 'no-cache, must-revalidate'
+    : (IMAGE_EXTS.indexOf(ext) >= 0 ? 'public, max-age=300' : 'public, max-age=3600');
   const headers = {
     'Content-Type': type,
     'Content-Length': stat.size,
-    'Cache-Control': ext === '.html' || ext === '.js' || ext === '.css' ? 'no-cache' : 'public, max-age=3600',
+    'Cache-Control': cacheControl,
     'X-Content-Type-Options': 'nosniff'
   };
   res.writeHead(200, headers);

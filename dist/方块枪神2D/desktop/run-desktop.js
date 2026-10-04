@@ -36,6 +36,9 @@ const INFO_FILE = path.join(STATE_DIR, 'server.json');
 const PID_FILE = path.join(STATE_DIR, 'server.pid');
 const PORT_FROM = 8080;
 const PORT_TO = 8099;
+// 游戏专用浏览器配置目录：与用户主浏览器隔离，避免 SW / HTTP 缓存一直发旧资源
+const PROFILE_DIR = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'),
+  'BlockGunner2D', 'profile');
 const HEALTH_TIMEOUT_MS = 15000;
 const HEALTH_INTERVAL_MS = 200;
 
@@ -228,7 +231,12 @@ function findBrowser() {
 }
 
 function browserArgs(url) {
-  return ['--app=' + url, '--window-size=1280,760', '--no-first-run'];
+  return ['--app=' + url, '--window-size=1280,760', '--no-first-run',
+          '--no-default-browser-check', '--user-data-dir=' + PROFILE_DIR];
+}
+
+function ensureProfileDir() {
+  try { fs.mkdirSync(PROFILE_DIR, { recursive: true }); } catch (e) { /* ignore */ }
 }
 
 function openBrowser(port) {
@@ -247,6 +255,7 @@ function openBrowser(port) {
   }
 
   if (browser.exe) {
+    ensureProfileDir();
     const child = spawn(browser.exe, browserArgs(url), {
       detached: true,
       stdio: 'ignore',

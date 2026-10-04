@@ -626,6 +626,27 @@ namespace BlockGunner2D
             return null;
         }
 
+        /// <summary>游戏专用浏览器配置目录：与用户主浏览器隔离，避免 SW / HTTP 缓存互相污染。</summary>
+        public static string ProfileDir
+        {
+            get
+            {
+                string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                return Path.Combine(Path.Combine(local, "BlockGunner2D"), "profile");
+            }
+        }
+
+        public static void EnsureProfileDir()
+        {
+            try { Directory.CreateDirectory(ProfileDir); }
+            catch { }
+        }
+
+        private static string Quote(string value)
+        {
+            return (char)34 + value + (char)34;
+        }
+
         public static bool OpenApp(string url, out string error)
         {
             error = null;
@@ -634,9 +655,10 @@ namespace BlockGunner2D
             {
                 if (browser != null)
                 {
+                    EnsureProfileDir();
                     ProcessStartInfo psi = new ProcessStartInfo();
                     psi.FileName = browser;
-                    psi.Arguments = "--app=" + url + " --window-size=1280,760";
+                    psi.Arguments = "--app=" + url + " --window-size=1280,760 --no-first-run --no-default-browser-check --user-data-dir=" + Quote(ProfileDir);
                     psi.UseShellExecute = false;
                     Process.Start(psi);
                     return true;
@@ -722,6 +744,7 @@ namespace BlockGunner2D
         private Button _copyButton;
         private Button _netButton;
         private Button _stopButton;
+        private Button _clearCacheButton;
         private CheckBox _autoStartBox;
         private bool _suppressAutoStart;
         private bool _closing;
@@ -822,10 +845,13 @@ namespace BlockGunner2D
             _netButton.Click += OnNetClick;
             _stopButton = MakeButton("停止服务", 100, false);
             _stopButton.Click += OnStopClick;
+            _clearCacheButton = MakeButton("清除缓存", 100, false);
+            _clearCacheButton.Click += OnClearCacheClick;
             buttons.Controls.Add(_startButton);
             buttons.Controls.Add(_copyButton);
             buttons.Controls.Add(_netButton);
             buttons.Controls.Add(_stopButton);
+            buttons.Controls.Add(_clearCacheButton);
 
             TableLayoutPanel foot = new TableLayoutPanel();
             foot.Dock = DockStyle.Fill;
@@ -1132,6 +1158,34 @@ namespace BlockGunner2D
                     "服务已停止，本启动器拉起的 node 进程已结束，端口 " + port + " 已释放。",
                     "方块枪神 2D", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+        }
+
+        private void OnClearCacheClick(object sender, EventArgs e)
+        {
+            string dir = BrowserLauncher.ProfileDir;
+            DialogResult r = MessageBox.Show(this,
+                "将删除游戏专用浏览器配置目录：\n" + dir + "\n\n" +
+                "用于解决「更新后界面还是旧版」；请先关闭本启动器打开的游戏窗口，然后点「是」，程序会自动重启。",
+                "清除缓存并重启", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (r != DialogResult.Yes) return;
+            try
+            {
+                if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                string root = Path.GetDirectoryName(dir);
+                if (!String.IsNullOrEmpty(root) && Directory.Exists(root))
+                {
+                    try { if (Directory.GetFileSystemEntries(root).Length == 0) Directory.Delete(root, false); }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this,
+                    "删除失败：" + ex.Message + "\n\n请先关闭游戏窗口（Edge/Chrome），再点「清除缓存」。",
+                    "清除缓存", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            Application.Restart();
         }
 
         private void OnAutoStartChanged(object sender, EventArgs e)

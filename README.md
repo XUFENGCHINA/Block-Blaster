@@ -1,6 +1,6 @@
 # 方块枪神 2D · Block Gunner
 
-> **当前版本：v1.1.2** · 完整更新日志见 [CHANGELOG.md](CHANGELOG.md)。
+> **当前版本：v1.1.3** · 完整更新日志见 [CHANGELOG.md](CHANGELOG.md)。
 
 > 俯视角方块枪战：你是方块，敌人也是方块。**100 个关卡 · 50 种怪物图鉴 · 大逃杀 · 4 档外挂难度 · 装备/皮肤商店 · 局域网与内网穿透联机 · Windows/Android 双端安装包**。
 > 纯 HTML5 Canvas + 原生 JS 实现，**零第三方依赖**，双击即玩。

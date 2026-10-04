@@ -257,8 +257,14 @@ public class LocalHttpServer {
 
     static String cacheControl(String path) {
         String p = path.toLowerCase();
-        if (p.endsWith(".html") || p.endsWith(".js") || p.endsWith(".css") || p.endsWith(".webmanifest")) {
-            return "no-cache";
+        // 代码类资源每次校验：App/PWA 更新后刷新一次即可拿到新版本
+        if (p.endsWith(".html") || p.endsWith(".htm") || p.endsWith(".js") || p.endsWith(".mjs")
+                || p.endsWith(".css") || p.endsWith(".webmanifest")) {
+            return "no-cache, must-revalidate";
+        }
+        if (p.endsWith(".png") || p.endsWith(".jpg") || p.endsWith(".jpeg") || p.endsWith(".gif")
+                || p.endsWith(".svg") || p.endsWith(".ico") || p.endsWith(".webp") || p.endsWith(".bmp")) {
+            return "public, max-age=300";
         }
         return "public, max-age=3600";
     }
