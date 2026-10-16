@@ -69,12 +69,14 @@
 # 真实 server + 两个无头 Edge（真实 js/net.js/ui.js/game.js）：建房 -> 加入 -> 开局双方 playing；file:// 离线检查
 & "...\node.exe" tests/e2e-coop.js
 
-# v1.1.4 验收矩阵：真实 Edge + CDP，3 视口 × 系统字体 1.0/1.3/1.5
-# （模拟 WebView textZoom：把 fitStage() 的 #stage 字号乘上比例）
-# 断言：7 个主菜单入口全在 #stage 内、中心 elementFromPoint 命中自身、无需滚动、
-#       标题/说明小字不被裁切、诊断行内容正确，并用真实鼠标事件点「🎨 材质包」进材质包页；
-#       另有「关掉兜底仍然溢出」的反向对照，证明矩阵不是恒真断言。
-& "...\node.exe" tests/acceptance-menu-114.js
+# 主菜单验收矩阵（发版门禁）：真实 Edge + CDP
+# 第一部分：3 视口 × 系统字体 1.0/1.3/1.5（模拟 WebView textZoom：把 fitStage() 的 #stage 字号乘上比例）
+#   断言：7 个主菜单入口全在 #stage 内、中心 elementFromPoint 命中自身、无需滚动、
+#         标题/说明小字不被裁切、诊断行内容正确，并用真实鼠标事件点「🎨 材质包」进材质包页；
+#   另有压力用例与「关掉兜底仍然溢出」的反向对照，证明矩阵不是恒真断言。
+# 第二部分（v1.2.0 斜切改版）：斜切形状 / 悬停变大变白 / 常驻选中态 /
+#   大图区材质包背景（装并启用示例包）/ 面板 keep·hide·replace 三种模式。
+& "...\node.exe" tests/acceptance-menu.js
 `
 
 结果分别写入 `tests/last-server-results.json` 与 `tests/last-e2e-results.json`；验收矩阵只打印结果（不写文件）；脚本结束时会杀掉自己启动的服务端/浏览器进程并删除 `--user-data-dir`。

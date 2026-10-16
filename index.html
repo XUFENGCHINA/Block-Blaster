@@ -66,58 +66,69 @@
       <div class="menu-grid">
         <div class="menu-left">
           <h1>方块枪神<span>2D</span></h1>
-          <p class="sub">你是方块，敌人也是方块。<br>拿起手枪，把它们全部打成碎片。</p>
-          <div class="menu-btns">
+          <p class="sub">斜切方块世界 · 枪战到底</p>
+          <div class="menu-btns" id="menuBtns">
             <div class="menu-main">
-              <button class="btn big" data-act="levels">▶ 开 始 游 戏</button>
-              <div class="btn-note" id="menuLevelsNote">战役关卡 · 100 关剧情挑战</div>
-              <button class="btn big diff" data-act="diff">🔥 难 度 关 卡</button>
-              <div class="btn-note">无限关卡 · 4 档难度 · 敌人开外挂</div>
-              <button class="btn big br" data-act="br">🪂 大逃杀</button>
-              <div class="btn-note">超大战场 · 杀光所有敌人 · 房屋捡枪</div>
-              <button class="btn big net" data-act="net">🌐 联 机 合 作</button>
-              <div class="btn-note">局域网 / 内网穿透 · 2-4 人合作</div>
+              <div class="menu-item">
+                <button class="btn big menu-slant sel" data-act="levels"><span>▶ 开始游戏</span></button>
+                <div class="btn-note" id="menuLevelsNote">战役关卡 · 100 关剧情挑战</div>
+              </div>
+              <div class="menu-item">
+                <button class="btn big menu-slant" data-act="diff"><span>🔥 难度关卡</span></button>
+                <div class="btn-note">无限关卡 · 4 档难度</div>
+              </div>
+              <div class="menu-item">
+                <button class="btn big menu-slant" data-act="br"><span>🪂 大逃杀</span></button>
+                <div class="btn-note">超大战场 · 房屋捡枪</div>
+              </div>
+              <div class="menu-item">
+                <button class="btn big menu-slant" data-act="net"><span>🌐 联机合作</span></button>
+                <div class="btn-note">局域网 / 内网穿透 · 2-4 人</div>
+              </div>
             </div>
             <div class="menu-mini">
               <div class="menu-mini-item">
-                <button class="btn big ghost" data-act="shop">🛒 装 备 商 店</button>
-                <div class="btn-note">强化手枪 · 购买皮肤技能</div>
+                <button class="btn menu-slant mini" data-act="shop"><span>🛒 商店</span></button>
+                <div class="btn-note">强化 · 皮肤</div>
               </div>
               <div class="menu-mini-item">
-                <button class="btn big book" data-act="book">📖 怪 物 图 鉴</button>
+                <button class="btn menu-slant mini" data-act="book"><span>📖 图鉴</span></button>
                 <div class="btn-note" id="menuDexNote">收录进度 0 / 0</div>
               </div>
               <div class="menu-mini-item">
-                <button class="btn big pack" data-act="pack">🎨 材 质 包</button>
-                <div class="btn-note" id="menuPackNote">未安装 · 换背景 / 面板 / 角色头像</div>
+                <button class="btn menu-slant mini" data-act="pack"><span>🎨 材质包</span></button>
+                <div class="btn-note" id="menuPackNote">未安装 · 换背景 / 面板 / 头像</div>
               </div>
             </div>
             <button class="btn tiny install hide" id="btnInstall" data-act="install" type="button" title="安装到桌面">📲 安装到桌面</button>
           </div>
         </div>
         <div class="menu-right" id="menuRight">
-          <div class="panel pack-panel" id="menuPackPanel" hidden></div>
-          <div class="panel">
-            <div class="panel-title">📊 我的数据</div>
-            <div class="menu-stats" id="menuStats"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">🏆 难度关卡纪录</div>
-            <div class="menu-endless" id="menuEndless"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">🪂 大逃杀战绩</div>
-            <div class="menu-br" id="menuBR"></div>
-          </div>
-          <div class="panel">
-            <div class="panel-title">🎮 操作说明</div>
-            <div class="keys">
-              <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>移动</span></div>
-              <div><kbd>鼠标</kbd><span>瞄准 / 左键射击</span></div>
-              <div><kbd>R</kbd><span>换弹</span></div>
-              <div><kbd>空格</kbd><span>冲刺（无敌）</span></div>
-              <div><kbd>P</kbd><span>暂停</span></div>
-              <div><kbd>M</kbd><span>静音</span></div>
+          <div class="menu-hero-deco" aria-hidden="true"></div>
+          <div class="menu-hero-panels" id="menuHeroPanels">
+            <div class="panel pack-panel" id="menuPackPanel" hidden></div>
+            <div class="panel menu-panel">
+              <div class="panel-title">📊 我的数据</div>
+              <div class="menu-stats" id="menuStats"></div>
+            </div>
+            <div class="panel menu-panel">
+              <div class="panel-title">🏆 难度关卡纪录</div>
+              <div class="menu-endless" id="menuEndless"></div>
+            </div>
+            <div class="panel menu-panel">
+              <div class="panel-title">🪂 大逃杀战绩</div>
+              <div class="menu-br" id="menuBR"></div>
+            </div>
+            <div class="panel menu-panel">
+              <div class="panel-title">🎮 操作说明</div>
+              <div class="keys">
+                <div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>移动</span></div>
+                <div><kbd>鼠标</kbd><span>瞄准 / 左键射击</span></div>
+                <div><kbd>R</kbd><span>换弹</span></div>
+                <div><kbd>空格</kbd><span>冲刺（无敌）</span></div>
+                <div><kbd>P</kbd><span>暂停</span></div>
+                <div><kbd>M</kbd><span>静音</span></div>
+              </div>
             </div>
           </div>
         </div>
@@ -342,7 +353,7 @@
 
   <div id="toast"></div>
 
-  <!-- 运行环境诊断行（v1.1.4）：反馈问题时请附带这一行内容 -->
+  <!-- 运行环境诊断行（v1.2.0）：反馈问题时请附带这一行内容 -->
   <div id="diag" hidden title="运行环境诊断：视口 / dpr / WebView 内核 / 主菜单自适应比例"></div>
 </div>
 
@@ -358,7 +369,7 @@
   if (window.PWA && PWA.init) PWA.init();
 </script>
 <script>
-/* v1.1.4 诊断行：视口 / dpr / WebView（或浏览器）内核版本 / 主菜单自适应比例。
+/* v1.2.0 诊断行：视口 / dpr / WebView（或浏览器）内核版本 / 主菜单自适应比例。
    手机上报「按钮点不动」时，这一行就能直接分辨是内核过旧还是字号被系统放大。 */
 (function(){
   function kernelText(){
@@ -373,7 +384,7 @@
       var el = document.getElementById('diag');
       if (!el) return;
       var scale = (typeof window.__bgMenuScale === 'number') ? Math.round(window.__bgMenuScale * 100) + '%' : '--';
-      el.textContent = 'v1.1.4 · ' + window.innerWidth + '×' + window.innerHeight +
+      el.textContent = 'v1.2.0 · ' + window.innerWidth + '×' + window.innerHeight +
         ' · dpr' + (window.devicePixelRatio || 1) + ' · ' + kernelText() + ' · 菜单 ' + scale;
     } catch(e){ /* 诊断行永远不能影响游戏 */ }
   }

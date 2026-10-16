@@ -662,15 +662,109 @@ body.touch .screen{
 .menu-left{ min-height:0; }
 
 /* ============================================================
-   v1.1.4 主菜单溢出兜底 + 运行环境诊断行（追加，不改动上方原有规则）
+   task-25 主菜单改版：左 1/3 斜切按钮 + 右 2/3 材质包大图区
    ============================================================ */
-/* Android System WebView 跟随系统「字体大小」放大 computed font-size 时，em 布局会整体变高，
-   最后一排入口（「🎨 材质包」最先中招）被 #stage{overflow:hidden} 挤出屏幕。
-   Android 侧已用 setTextZoom(100) 从源头关掉文本缩放；这里由 ui.js 的 fitMenu() 兜底：
-   先按比例缩小 .menu-grid 自身的字号（em 级联，7 个入口都回到 stage 内），
-   缩到下限仍溢出时给 .menu-left 加 .menu-scroll，退化为主菜单可纵向滚动。 */
-.menu-left.menu-scroll{ overflow-y:auto; max-height:100%; padding-right:.35em;
-  -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+.menu-grid{ grid-template-columns:31% 69%; gap:0; align-items:stretch; min-height:0; }
+.menu-left{ position:relative; z-index:2; display:flex; flex-direction:column; justify-content:center;
+  min-height:0; padding:.2em 1.4em .2em .35em; overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; }
+.menu-left h1{ font-size:2.05em; letter-spacing:.02em; }
+.menu-left .sub{ margin:.12em 0 .6em; font-size:.66em; line-height:1.35; color:var(--dim2); }
+
+.menu-btns{ display:flex; flex-direction:column; gap:.22em; max-width:none; width:100%; }
+.menu-main{ display:flex; flex-direction:column; gap:.16em; }
+.menu-item{ display:flex; flex-direction:column; align-items:flex-start; }
+.menu-item .btn-note{ margin:.12em 0 0 .7em; font-size:.5em; line-height:1.25; min-height:1.3em; color:var(--dim2); text-align:left; }
+
+.menu-slant{
+  position:relative; display:flex; align-items:center; justify-content:center;
+  width:calc(100% - .6em); height:3.1em; margin-left:.3em; padding:0 .85em;
+  border:0; border-radius:.16em; cursor:pointer; font:inherit; font-size:1em; font-weight:900;
+  letter-spacing:.05em; color:#eaf4ff; transform:skewX(-12deg);
+  background:linear-gradient(180deg, rgba(24,37,60,.96), rgba(9,16,30,.97));
+  box-shadow:0 3px 0 rgba(0,0,0,.5), 0 7px 16px rgba(0,0,0,.4), inset 0 0 0 1px rgba(120,180,240,.22);
+  transition:transform .14s ease, background .14s ease, color .14s ease, box-shadow .14s ease, margin .14s ease;
+}
+.menu-slant > span{ display:block; transform:skewX(12deg); white-space:nowrap; }
+.menu-slant.mini{ height:2.45em; font-size:.82em; padding:0 .35em; }
+/* 斜切会让相邻按钮的上下角各外扩 (高度/2)·tan12°，横排间隔必须大于这个量，否则会压住邻居的文字 */
+.menu-mini{ display:grid; grid-template-columns:repeat(3, 1fr); gap:.6em; margin-top:.18em; }
+.menu-mini-item{ display:flex; flex-direction:column; min-width:0; }
+.menu-mini .menu-slant{ width:100%; margin-left:0; }
+.menu-mini .btn-note{ margin:.12em 0 0; font-size:.48em; line-height:1.25; min-height:2.2em; text-align:center; }
+
+/* 默认 / 常驻选中态 */
+.menu-slant.sel{
+  background:#f4fbff; color:#0a1526;
+  transform:skewX(-12deg) scale(1.03);
+  box-shadow:0 0 0 1px rgba(255,255,255,.5), 0 0 20px rgba(160,230,255,.45), 0 7px 18px rgba(0,0,0,.45);
+}
+.menu-slant:active{ transform:skewX(-12deg) scale(1.04); }
+.menu-slant.press{ transform:skewX(-12deg) scale(1.04); }
+
+/* 鼠标悬停：变大 + 变白 + 发光/左移；同时只有悬停项高亮（选中项自动降级） */
+@media (hover:hover){
+  .menu-slant:hover{
+    background:#f4fbff; color:#0a1526;
+    transform:skewX(-12deg) scale(1.06) translateX(.22em);
+    box-shadow:0 0 0 1px rgba(255,255,255,.6), 0 0 24px rgba(160,230,255,.55), 0 9px 22px rgba(0,0,0,.5);
+    z-index:3;
+  }
+  .menu-btns:hover .menu-slant.sel:not(:hover){
+    background:linear-gradient(180deg, rgba(24,37,60,.96), rgba(9,16,30,.97));
+    color:#eaf4ff; transform:skewX(-12deg) scale(1);
+    box-shadow:0 3px 0 rgba(0,0,0,.5), 0 7px 16px rgba(0,0,0,.4), inset 0 0 0 1px rgba(120,180,240,.22);
+  }
+}
+
+/* 右侧大图区：左边缘斜切 + 材质包背景 */
+.menu-right{
+  position:relative; z-index:1; display:block; overflow:hidden; min-height:0;
+  border-radius:.9em 0 0 .9em;
+  clip-path:polygon(9% 0, 100% 0, 100% 100%, 0 100%);
+  background:
+    radial-gradient(80% 70% at 74% 18%, rgba(53,224,245,.20), transparent 62%),
+    radial-gradient(70% 60% at 30% 90%, rgba(176,108,255,.16), transparent 70%),
+    linear-gradient(155deg, #12203a, #0a1120 55%, #1a1030);
+  box-shadow:inset 0 0 0 1px rgba(120,180,240,.18);
+}
+#stage.pack-bg .menu-right{
+  background-image:linear-gradient(180deg, rgba(4,7,13,.55), rgba(4,7,13,.84)), var(--pack-bg, none);
+  background-size:cover, cover; background-position:center, center; background-repeat:no-repeat, no-repeat;
+}
+.menu-hero-deco{
+  position:absolute; inset:0; pointer-events:none;
+  background:
+    repeating-linear-gradient(115deg, rgba(140,220,255,.07) 0 2px, transparent 2px 54px),
+    radial-gradient(60% 50% at 82% 12%, rgba(176,108,255,.16), transparent 70%);
+}
+.menu-hero-panels{
+  position:absolute; inset:.9em 1em .9em 2.4em; z-index:2;
+  display:grid; grid-template-columns:1fr 1fr; gap:.5em; align-content:center;
+}
+.menu-right .menu-panel, .menu-right #menuPackPanel{
+  background:rgba(8,14,26,.58); backdrop-filter:blur(6px);
+  border:1px solid rgba(120,180,240,.3); box-shadow:0 10px 26px rgba(0,0,0,.4);
+}
+.menu-right .panel-title{ font-size:.66em; margin-bottom:.35em; }
+.menu-right .menu-stats{ gap:.3em .7em; }
+.menu-right .ms{ font-size:.66em; }
+.menu-right .menu-endless{ font-size:.66em; line-height:1.5; }
+.menu-right .menu-br .ms{ font-size:.64em; }
+.menu-right .keys{ gap:.22em .5em; }
+.menu-right .keys div{ font-size:.6em; }
+#menuPackPanel{ overflow:auto; max-height:100%; }
+/* 面板三种模式（覆盖早前的 > 直系选择器版本） */
+.menu-right.panels-hidden .panel{ display:none; }
+.menu-right.pack-replaced .panel{ display:none; }
+.menu-right.pack-replaced #menuPackPanel{ display:flex; flex-direction:column; gap:.5em; grid-column:1 / -1; }
+
+/* ============================================================
+   v1.2.0 溢出韧性 + 运行环境诊断行
+   ============================================================ */
+/* 左侧按钮栏本身就是滚动容器（overflow-y:auto）；#stage 上有 touch-action:none，
+   这里显式放行纵向拖动，缩到下限仍溢出时手机上也能滑到最后一个入口。 */
+.menu-left{ touch-action:pan-y; }
+.menu-left.menu-scroll{ padding-right:.5em; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 
 /* 诊断行：只读信息，pointer-events:none 保证它永远不会挡住按钮（elementFromPoint 会跳过） */
 #diag{ position:absolute; left:.4em; bottom:.3em; z-index:2147483645;

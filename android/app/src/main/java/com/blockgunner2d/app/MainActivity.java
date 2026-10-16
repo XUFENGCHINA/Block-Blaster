@@ -107,7 +107,7 @@ public class MainActivity extends Activity {
         settings.setLoadsImagesAutomatically(true);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
-        // v1.1.4 关键修复：忽略系统「字体大小」对网页文本的缩放。
+        // 关键修复（v1.2.0，原计划随 1.1.4 发布）：忽略系统「字体大小」对网页文本的缩放。
         // 不设置时，系统字号调大（1.3x / 1.5x）会把 em 布局整体放大，主菜单最后一排入口
         // （「🎨 材质包」最先中招）被 #stage{overflow:hidden} 挤出屏幕，点击落不到按钮上。
         // 网页侧（js/ui.js 的 fitMenu()）另有一层溢出兜底，两端互为保险。

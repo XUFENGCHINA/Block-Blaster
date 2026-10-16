@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-10-06T04:21:37.499Z",
+  "generatedAt": "2026-10-16T13:09:54.745Z",
   "results": [
     {
       "id": "E1",
       "name": "真实服务端启动（静态页 200）",
       "status": "PASS",
-      "detail": "port=61803"
+      "detail": "port=58851"
     },
     {
       "id": "E2",
       "name": "host 创建房间并获得房间码",
       "status": "PASS",
-      "detail": "code=8YWM"
+      "detail": "code=SN6C"
     },
     {
       "id": "E3",

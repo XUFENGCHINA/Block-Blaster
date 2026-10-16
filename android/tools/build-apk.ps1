@@ -305,7 +305,7 @@ Invoke-Step (Join-Path $CompileJavaHome 'bin\java.exe') @('-cp', (Join-Path $Bui
 Invoke-Step $aapt2 @('compile', '--dir', $StageRes, '-o', (Join-Path $BuildDir 'compiled_res.zip')) 'aapt2 compile resources'
 Invoke-Step $aapt2 @('link', '-o', $unsigned, '-I', $AndroidJar, '--manifest', $StageManifest,
     '-R', (Join-Path $BuildDir 'compiled_res.zip'), '-A', $StageAssets, '--java', (Join-Path $BuildDir 'gen'),
-    '--min-sdk-version', '21', '--target-sdk-version', '33', '--version-code', '6', '--version-name', '1.1.4',
+    '--min-sdk-version', '21', '--target-sdk-version', '33', '--version-code', '7', '--version-name', '1.2.0',
     '--auto-add-overlay') 'aapt2 link (resources + assets + R.java)'
 
 # ------------------------------------------------------------

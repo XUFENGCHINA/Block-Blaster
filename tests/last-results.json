@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-06T04:20:45.829Z",
+  "generatedAt": "2026-10-16T13:09:27.701Z",
   "profile": "desktop",
   "strict": true,
   "seed": 20250501,
@@ -11,7 +11,7 @@
       "name": "BR 开局 · 地图1(1800x1200, 24敌)",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 6,
+      "ms": 4,
       "notes": [
         "map1 敌人数=24 最小间距=94.4px 出生点=(1678,609)"
       ]
@@ -22,7 +22,7 @@
       "name": "BR 开局 · 地图2(2600x1700, 38敌)",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 1,
+      "ms": 2,
       "notes": [
         "map2 敌人数=38 最小间距=104.9px 出生点=(2462,338)"
       ]
@@ -33,7 +33,7 @@
       "name": "BR 开局 · 地图3(3400x2200, 56敌)",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 4,
+      "ms": 2,
       "notes": [
         "map3 敌人数=56 最小间距=92.1px 出生点=(1519,1537)"
       ]
@@ -44,7 +44,7 @@
       "name": "BR 拾取换枪 · 旧枪留在原地且可换回",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 12,
+      "ms": 10,
       "notes": []
     },
     {
@@ -53,7 +53,7 @@
       "name": "BR 拾取匕首 · kind=melee 且开火不耗弹",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 9,
+      "ms": 7,
       "notes": [
         "匕首 magSize=0 且有限，NaN 回归防护通过"
       ]
@@ -64,7 +64,7 @@
       "name": "匕首近战 · 正面命中 / 背后不掉血",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 7,
+      "ms": 8,
       "notes": [
         "正面 30px 匕首可命中",
         "背后 30px 匕首不掉血（方向性正确）"
@@ -76,7 +76,7 @@
       "name": "BR 鼠标瞄准 · 大世界摄像机偏移下方向正确",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 6,
+      "ms": 5,
       "notes": [
         "cam.x=420 鼠标指向 +x 后 p.aim=-0.199（cos=0.980）"
       ]
@@ -87,7 +87,7 @@
       "name": "BR 杀光胜利 · 首次发奖 / 重复不发",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 25,
+      "ms": 29,
       "notes": [
         "清场后 killed=28/28（含分裂产生的小怪） state=over",
         "已由 Lead 清理：BR 只剩 RUN.br 一个真相源，G.br 死状态已移除",
@@ -101,7 +101,7 @@
       "name": "BR 摄像机 · 四角夹紧且玩家在镜内",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 16,
+      "ms": 12,
       "notes": [
         "左上 cam=(0,0) 玩家屏幕=(70,70)",
         "右上 cam=(840,0) 玩家屏幕=(890,70)",
@@ -135,7 +135,7 @@
       "name": "回归 · 战役第1关通关 + 每波金币 + 重复不发",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 39,
+      "ms": 44,
       "notes": [
         "普通关清空 11 只，首通金币 +108，3 星",
         "重复通关不再发金币"
@@ -147,7 +147,7 @@
       "name": "回归 · 障碍物挡子弹",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 2,
+      "ms": 3,
       "notes": [
         "柱子挡弹 + 无遮挡可命中，均正常"
       ]
@@ -158,7 +158,7 @@
       "name": "回归 · 难四外挂生效 + 每波金币x4",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 17,
+      "ms": 15,
       "notes": [
         "难四首波金币 +100（含 x4 系数）"
       ]
@@ -177,7 +177,7 @@
       "name": "Edge headless 冒烟 · 主菜单/进入 BR/无 JS 错误",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 5836,
+      "ms": 6316,
       "notes": [
         "dump-dom 主菜单：大逃杀按钮存在，无 NAVERR/JS 报错",
         "dump-dom #br 直入大逃杀页：3 张地图卡 + 开始按钮，无 NAVERR/JS 报错",
@@ -190,7 +190,7 @@
       "name": "BR HUD · brChip 显隐 / 剩余敌人 / hudWeapon",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 8,
+      "ms": 5,
       "notes": [
         "非 BR 隐藏 #brChip；BR 显示剩余敌人并随击杀更新；#hudWeapon 正确"
       ]
@@ -201,7 +201,7 @@
       "name": "BR 地图2 · 首胜 +600 / 重复 0",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 30,
+      "ms": 28,
       "notes": [
         "地图 2 首胜 +600 金币（total=49, kills=49）",
         "地图 2 重复胜利 reward=0、金币不变"
@@ -225,7 +225,7 @@
       "name": "回归 · 第8关 BOSS 通关",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 34,
+      "ms": 32,
       "notes": [
         "BOSS 关通关：bossSeen=true wave2=true kills=25 stars=3"
       ]
@@ -269,7 +269,7 @@
       "name": "实例化 · 50 个 key 各跑 60 帧",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 54,
+      "ms": 59,
       "notes": [
         "50/50 key 各生成并跑 60 帧无异常，hp/size/基础速度与数据一致"
       ]
@@ -291,7 +291,7 @@
       "name": "特性 · regen 持续回血",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 2,
+      "ms": 1,
       "notes": [
         "regen 生效：80 -> 82.4（最大 160）"
       ]
@@ -313,7 +313,7 @@
       "name": "特性 · steal 命中回血",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "notes": [
         "steal 生效：接触命中后 70 -> 77.0"
       ]
@@ -379,7 +379,7 @@
       "name": "特性 · wallhack 子弹穿墙",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 0,
+      "ms": 1,
       "notes": [
         "wallhack 生效：穿墙弹留在柱子里，对照普通弹被回收"
       ]
@@ -390,7 +390,7 @@
       "name": "投放 · 50/50 全部有途径且 API 一致",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 9,
+      "ms": 2,
       "notes": [
         "50/50 全部有投放途径；每个 key 的首投放清单已写入 tests/dex-coverage.json"
       ]
@@ -467,7 +467,7 @@
       "name": "联机主机 · 远程输入驱动移动/开火",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 1,
+      "ms": 2,
       "notes": [
         "远程输入驱动移动与开火正常"
       ]
@@ -478,7 +478,7 @@
       "name": "联机主机 · 敌人追最近玩家",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 2,
+      "ms": 1,
       "notes": [
         "敌人选择最近的远程玩家作为目标（距离 300 -> 127）"
       ]
@@ -489,7 +489,7 @@
       "name": "联机主机 · 远程倒地 6 秒复活",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 15,
+      "ms": 13,
       "notes": [
         "远程玩家被击倒 -> 6 秒后半血复活"
       ]
@@ -500,7 +500,7 @@
       "name": "联机主机 · 全员倒地判负广播",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 3,
+      "ms": 2,
       "notes": [
         "全员倒地 -> lose 广播"
       ]
@@ -511,7 +511,7 @@
       "name": "联机主机 · 清波金币/通关广播",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 22,
+      "ms": 19,
       "notes": [
         "主机清波广播 coins=50，通关广播 win"
       ]
@@ -533,7 +533,7 @@
       "name": "联机客户端 · setup/snap 重建与插值",
       "profile": "desktop",
       "status": "PASS",
-      "ms": 2,
+      "ms": 1,
       "notes": [
         "客户端 setup/snap 重建 + 插值正确"
       ]
