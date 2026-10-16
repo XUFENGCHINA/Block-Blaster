@@ -1,8 +1,8 @@
 # 交接文档 · 方块枪神 2D / Block Blaster 2D
 
 > 给接手者的最短路径：先读本文件 → 再读 `CHANGELOG.md` 与 `README.md` → 跑一次验收矩阵 → 看「待办」。
-> **v1.2.0 已完成并通过全部验收；`v1.1.4` 基线已本地提交（未发版），v1.2.0 的改动在 v1.1.4 提交之后、尚未提交。**
-> 提交 / 打 tag / 推送按工程约定由负责人统一执行（见第 4 节）。
+> **v1.2.0 已完成、验收通过、已提交并推送（`origin/main` = `e265708`，tag `v1.2.0` 已推送）；手机端实机测试已由用户确认通过。**
+> `v1.1.4` 是并入本版的修复基线（`93fb285`，未单独发 tag）。
 
 ## 1. 项目是什么
 
@@ -12,20 +12,21 @@
 
 已实现内容：100 个战役关卡、50 种怪物 + 怪物图鉴（10 种个体特性）、大逃杀（3 张大地图/房屋捡枪）、难度关卡 4 档（敌人外挂）、装备商店（8 升级 + 8 带技能皮肤）、联机合作（主机权威 + 10Hz 快照）、内置内网穿透（UPnP/NAT-PMP + cloudflared/ngrok/frpc + frpc.toml）、材质包系统（.bgpack）、手机触屏适配、PWA / Windows EXE / Android APK 三端打包。
 
-## 2. 当前状态（核对于 2026-10-16 21:10）
+## 2. 当前状态（核对于 2026-10-16 21:20）
 
 | 项目 | 值 |
 | --- | --- |
-| git HEAD | `93fb285`（`fix: v1.1.4 手机端材质包按钮点不动…`，**仅本地提交，未打 tag、未推送**） |
-| 版本 tag | `v1.1.0` / `v1.1.1` / `v1.1.3`（`v1.1.2` 已合并删除；**`v1.2.0` 待负责人打**） |
+| git HEAD | `e265708`（`feat: v1.2.0 主菜单斜切改版…`，**与 origin/main 同步，0 待推 0 落后**） |
+| 版本 tag | `v1.1.0` / `v1.1.1` / `v1.1.3` / **`v1.2.0`（已推送，指向 `e265708`）**；`v1.1.2` 已按要求合并删除，`v1.1.4` 从未单独发版 |
 | 代码版本号 | **1.2.0**（README / manifest.webmanifest / AndroidManifest versionName / android/tools/build-apk.ps1） |
 | Android versionCode | **7**（v1.1.3 发出去的是 5；v1.1.4 用 6 但从未发版，直接跳到 7） |
-| 安装包 | `dist\方块枪神2D.apk` + `dist\BlockGunner2D.apk`（同文件，versionCode **7**、versionName **1.2.0**，debug 签名，aapt2 badging 已核对）、`dist\方块枪神2D.exe`（selftest PASS）+ `dist\方块枪神2D\` 分发副本 |
+| 安装包 | `dist\方块枪神2D.apk` + `dist\BlockGunner2D.apk`（同文件，153,218 B，versionCode **7**、versionName **1.2.0**，debug 签名，aapt2 badging 已核对）、`dist\方块枪神2D.exe`（53,760 B，selftest PASS）+ `dist\方块枪神2D\` 分发副本 |
 | 测试 | `node tests/run-tests.js --strict` → **52 PASS / 0 FAIL / 1 profile skip**；`tests/run-server-tests.js` → 17/17；`tests/e2e-coop.js` → 9/9；**`tests/acceptance-menu.js`（发版门禁）→ 全部通过**（9 组视口×字号 + 压力 + 反向对照 + v1.2.0 改版 9 项） |
+| 实机 | **手机 APK 已由用户实测通过**（2026-10-16） |
 | SW 缓存 | `bg2d-v7` → **`bg2d-v8`** |
 | 磁盘 | C: 约 43 GB 可用、D: 128 GB（%TEMP% 里 DSH 自己的 `dsh-workspace-changes-*` 快照约 14 GB，非本项目产物，勿乱删） |
 
-**v1.2.0 改动（相对 `93fb285`，工作区未提交）**：
+**v1.2.0 发布内容（提交 `e265708`）**：
 
 | 文件 | 内容 |
 | --- | --- |
