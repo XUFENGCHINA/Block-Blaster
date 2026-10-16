@@ -14,10 +14,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.ConsoleMessage;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
@@ -104,7 +106,13 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false); // 资源走 http://127.0.0.1；assets 兜底页仍可用 file:///android_asset
         settings.setLoadsImagesAutomatically(true);
         settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(false);
+        settings.setLoadWithOverviewMode(true);
+        // v1.1.4 关键修复：忽略系统「字体大小」对网页文本的缩放。
+        // 不设置时，系统字号调大（1.3x / 1.5x）会把 em 布局整体放大，主菜单最后一排入口
+        // （「🎨 材质包」最先中招）被 #stage{overflow:hidden} 挤出屏幕，点击落不到按钮上。
+        // 网页侧（js/ui.js 的 fitMenu()）另有一层溢出兜底，两端互为保险。
+        settings.setTextZoom(100);
+        web.setInitialScale(0);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMediaPlaybackRequiresUserGesture(false);
         web.setWebViewClient(new WebViewClient() {
@@ -120,6 +128,14 @@ public class MainActivity extends Activity {
 
         // 材质包安装需要系统文件选择器：onShowFileChooser + ACTION_GET_CONTENT（SAF）
         web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage cm) {
+                if (cm != null) {
+                    Log.i("chromium", "[INFO:CONSOLE] " + cm.message() + " (" + cm.sourceId() + ":" + cm.lineNumber() + ")");
+                }
+                return true;
+            }
+
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 if (filePathCallback != null) {
@@ -181,6 +197,45 @@ public class MainActivity extends Activity {
             Toast.makeText(this, "内置服务启动失败，改用 file:// 模式（联机不可用）", Toast.LENGTH_LONG).show();
         }
         loadGame();
+        checkWebViewVersion();
+    }
+
+    /** 启动时检测 WebView 内核版本，过旧时给出明确提示（而不是静默点击失灵）。 */
+    private void checkWebViewVersion() {
+        String ua = "";
+        try {
+            ua = web == null ? "" : web.getSettings().getUserAgentString();
+        } catch (Throwable ignored) {
+            ua = "";
+        }
+        int idx = ua.indexOf("Chrome/");
+        int major = -1;
+        if (idx >= 0) {
+            try {
+                major = Integer.parseInt(ua.substring(idx + 7).replaceAll("[^0-9].*$", ""));
+            } catch (Throwable ignored) {
+                major = -1;
+            }
+        }
+        if (major >= 0 && major < 80) {
+            showWebViewTooOldDialog("Chrome/" + major);
+        } else if (major < 0) {
+            showWebViewTooOldDialog("无法识别（可能是很老的 WebView）");
+        }
+    }
+
+    private void showWebViewTooOldDialog(String version) {
+        try {
+            new AlertDialog.Builder(this)
+                    .setTitle("WebView 版本过旧")
+                    .setMessage("检测到 Android System WebView / Chrome 版本：" + version + "。\n\n"
+                            + "游戏需要 Chrome 80 及以上；当前版本可能导致按钮点不动、界面错位。\n"
+                            + "请在应用商店更新「Android System WebView」或「Chrome」后重新打开游戏。")
+                    .setPositiveButton("我知道了", null)
+                    .show();
+        } catch (Throwable ignored) {
+            // never crash because of the hint
+        }
     }
 
     private int dp(int value) {

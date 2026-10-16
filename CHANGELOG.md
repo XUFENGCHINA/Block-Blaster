@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-10-06
+
+### 🐛 修复
+
+- **手机端（APK）主菜单「🎨 材质包」按钮点不动**：Android System WebView 会跟随系统「字体大小」放大网页文本（实测 1.3× / 1.5×），而本项目 UI 全部使用 em 单位 → 布局整体变高 → 主菜单最后一排入口被 `#stage{overflow:hidden}` 挤出屏幕，点击中心落不到按钮上（电脑端与字体默认大小的手机端都正常）。
+  - **Android 侧（根因修复）**：`WebSettings.setTextZoom(100)` 忽略系统文本缩放，并配合 `setLoadWithOverviewMode(true)` / `setInitialScale(0)`；启动时检测 WebView 内核版本，低于 Chrome 80 时明确弹窗提示更新「Android System WebView」，而不是静默点击失灵；页面 console 输出转发到 logcat 便于抓手机日志。
+  - **Web 侧（溢出兜底）**：`js/ui.js` 新增 `fitMenu()`——逐一检查 7 个主菜单入口是否完整落在 `#stage` 内、且中心 `elementFromPoint` 命中自己；同时要求标题 / 副标题 / 每个入口下面的说明小字完整可见、左下角诊断行不被压住。不满足就按比例缩小 `.menu-grid` 的字号（em 级联，左右两栏同缩，下限 62%），缩到下限仍溢出时主菜单退化为可纵向滚动。进入主菜单、窗口缩放、转屏、首屏 200ms 后各校准一次；竖屏「请旋转手机」遮罩显示时不做缩放。
+  - **诊断行**：主菜单左下角新增一行运行环境信息（`v1.1.4 · 视口尺寸 · dpr · WebView/Chrome 内核版本 · 菜单自适应比例`），只读且不拦截点击；反馈「点不动」时截图这一行即可判断是内核过旧还是字号被系统放大。
+
+### 🔧 变更
+
+- 本次发布资源从 tag `v1.1.3` 冻结（`git show v1.1.3:index.html` 等），**不包含**尚未完成的 v1.2.0 主菜单斜切改版；该改版已保存在 stash（`git stash list` 中的 “wip v1.2.0 主菜单斜切改版”）与补丁备份中，留待 1.2.0 继续。
+- `sw.js` 缓存版本 `bg2d-v6` → `bg2d-v7`；`manifest.webmanifest` 版本 → 1.1.4；Android `versionCode` 5 → 6 / `versionName` 1.1.4；重新构建 APK 与 EXE。
+- `android/tools/build-apk.ps1`：native 工具把告警写到 stderr（如 javac 的 deprecation note）时不再被 `$ErrorActionPreference='Stop'` 当成致命错误中断构建，一律以退出码判定。
+- 新增验收脚本 `tests/acceptance-menu-114.js`（真实 Edge + CDP）：3 视口 × 字体 1.0/1.3/1.5 共 9 组，断言 7 个入口在屏内 / 中心命中自身 / 说明小字不裁切 / 诊断行内容，并用真实鼠标点「🎨 材质包」；另含「关掉兜底仍然溢出」的反向对照。
+
 ## [1.1.3] - 2026-10-03
 
 ### 🐛 修复

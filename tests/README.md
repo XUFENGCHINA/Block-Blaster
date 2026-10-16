@@ -60,7 +60,7 @@
 | 18 | G18.1-G18.5 | 联机客户端引擎：50ms 输入上传 / setup+snap 重建与插值 / coins-win-lose 事件 / 主机权威（不本地发波次金币） | desktop |
 | 19 | G19.1 | 玩家倒地 6 秒复活（队友存活时不判负） | desktop |
 
-## 独立脚本（服务端 / 双浏览器端到端）
+## 独立脚本（服务端 / 双浏览器端到端 / 主菜单验收矩阵）
 
 `
 # 真实 server/server.js + 3 个 WebSocket 客户端（create/join/relay/peer/start/leave/非法消息 + 静态托管）
@@ -68,9 +68,16 @@
 
 # 真实 server + 两个无头 Edge（真实 js/net.js/ui.js/game.js）：建房 -> 加入 -> 开局双方 playing；file:// 离线检查
 & "...\node.exe" tests/e2e-coop.js
+
+# v1.1.4 验收矩阵：真实 Edge + CDP，3 视口 × 系统字体 1.0/1.3/1.5
+# （模拟 WebView textZoom：把 fitStage() 的 #stage 字号乘上比例）
+# 断言：7 个主菜单入口全在 #stage 内、中心 elementFromPoint 命中自身、无需滚动、
+#       标题/说明小字不被裁切、诊断行内容正确，并用真实鼠标事件点「🎨 材质包」进材质包页；
+#       另有「关掉兜底仍然溢出」的反向对照，证明矩阵不是恒真断言。
+& "...\node.exe" tests/acceptance-menu-114.js
 `
 
-结果分别写入 `tests/last-server-results.json` 与 `tests/last-e2e-results.json`；脚本结束时会杀掉自己启动的服务端/浏览器进程。
+结果分别写入 `tests/last-server-results.json` 与 `tests/last-e2e-results.json`；验收矩阵只打印结果（不写文件）；脚本结束时会杀掉自己启动的服务端/浏览器进程并删除 `--user-data-dir`。
 
 > Node 单测（run-tests.js）不加载真实 `js/net.js`，联机引擎用例使用 mock Net（`available()=false`），以免影响离线 UI 用例；真实 Net 的行为由上述两个独立脚本覆盖。
 ## 实现说明

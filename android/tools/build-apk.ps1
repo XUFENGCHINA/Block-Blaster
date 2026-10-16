@@ -46,7 +46,15 @@ function Invoke-Capture([string]$exe, [string[]]$arguments) {
 
 function Invoke-Step([string]$exe, [string[]]$arguments, [string]$label) {
     Step $label
-    & $exe @arguments
+    # 工具会把告警写到 stderr（例如 javac 的 deprecation note）；$ErrorActionPreference='Stop'
+    # 时这会被 PowerShell 当成致命错误，导致构建在管道里被调用时中断。这里只以退出码为准。
+    $old = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $exe @arguments
+    } finally {
+        $ErrorActionPreference = $old
+    }
     if ($LASTEXITCODE -ne 0) {
         Fail ($label + ' failed (exit ' + $LASTEXITCODE + ')')
     }
@@ -297,7 +305,7 @@ Invoke-Step (Join-Path $CompileJavaHome 'bin\java.exe') @('-cp', (Join-Path $Bui
 Invoke-Step $aapt2 @('compile', '--dir', $StageRes, '-o', (Join-Path $BuildDir 'compiled_res.zip')) 'aapt2 compile resources'
 Invoke-Step $aapt2 @('link', '-o', $unsigned, '-I', $AndroidJar, '--manifest', $StageManifest,
     '-R', (Join-Path $BuildDir 'compiled_res.zip'), '-A', $StageAssets, '--java', (Join-Path $BuildDir 'gen'),
-    '--min-sdk-version', '21', '--target-sdk-version', '33', '--version-code', '5', '--version-name', '1.1.3',
+    '--min-sdk-version', '21', '--target-sdk-version', '33', '--version-code', '6', '--version-name', '1.1.4',
     '--auto-add-overlay') 'aapt2 link (resources + assets + R.java)'
 
 # ------------------------------------------------------------

@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-10-02T13:03:11.130Z",
-  "port": 62415,
+  "generatedAt": "2026-10-06T04:21:30.619Z",
+  "port": 61798,
   "results": [
     {
       "id": "S1",
       "name": "服务端启动 + GET /index.html 200",
       "status": "PASS",
-      "detail": "端口 62415"
+      "detail": "端口 61798"
     },
     {
       "id": "S2",
       "name": "静态页含 方块枪神",
       "status": "PASS",
-      "detail": "status=200 len=12532"
+      "detail": "status=200 len=16294"
     },
     {
       "id": "S3",
@@ -30,7 +30,7 @@
       "id": "S5",
       "name": "create 建房：4 位房间码 + host 标记 + 1 名玩家",
       "status": "PASS",
-      "detail": "code=FWCN"
+      "detail": "code=33DR"
     },
     {
       "id": "S6",
@@ -54,7 +54,7 @@
       "id": "S9",
       "name": "relay 双向到达其他两人，不回发给发送者",
       "status": "PASS",
-      "detail": "from=p6cafb32a"
+      "detail": "from=p53f203cb"
     },
     {
       "id": "S10",

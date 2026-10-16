@@ -110,6 +110,8 @@ function show(name){
   });
   const ov = $('overlay');
   ov.classList.toggle('hide', name === null);
+  const diag = $('diag');
+  if (diag) diag.hidden = (name !== 'menu');   // v1.1.4 诊断行只在主菜单显示
   const hud = $('hud');
   if (hud) hud.classList.toggle('on', name === null || name === 'pause');
   Game.showTouch(name === null);
@@ -195,6 +197,7 @@ function renderMenu(){
   applyPackVisuals();
   // PWA：主菜单「📲 安装到桌面」按钮只在可安装 / iOS 时显示
   if (typeof PWA !== 'undefined' && PWA && PWA.updateInstallButton) PWA.updateInstallButton();
+  try { fitMenu(); } catch(e){}   // v1.1.4：溢出兜底（字体被系统放大 / 屏幕过小）
 }
 
 /* ---------------- 关卡页 ---------------- */
@@ -1296,6 +1299,84 @@ function bind(){
 
 
 /* ---------------- 移动端适配 ---------------- */
+/* ---------------- v1.1.4 主菜单溢出韧性 ----------------
+   安卓 System WebView 会跟随系统「字体大小」放大页面的 computed font-size，而本项目 UI
+   全用 em 布局：#stage{overflow:hidden} 会把主菜单最后一排入口（最先中招的是「🎨 材质包」）
+   挤出屏幕，点击自然落不到按钮上。Android 侧已用 setTextZoom(100) 从源头关掉缩放，这里再做
+   一层 Web 兜底——#stage 的宽高/字号仍由 game.js 的 fitStage() 决定，本函数只按比例缩放
+   .menu-grid 自身的字号（em 级联，左右两栏一起缩），直到 7 个入口都完整落在 stage 内、中心
+   elementFromPoint 命中自己，且入口下面的说明小字与左下角诊断行都不被裁掉/压住；
+   缩到下限仍溢出时，主菜单退化为可纵向滚动。 */
+const MENU_FIT_MIN = 0.62;    // 字号最多缩到 62%（再小就看不清了）
+const MENU_FIT_STEP = 0.04;
+function menuEntryButtons(){
+  try {
+    const box = document.querySelector('.menu-btns');
+    if (!box || !box.querySelectorAll) return [];
+    const list = Array.prototype.slice.call(box.querySelectorAll('button[data-act]'));
+    return list.filter(function(b){
+      if (!b || !b.classList || b.classList.contains('hide')) return false;
+      const r = b.getBoundingClientRect ? b.getBoundingClientRect() : null;
+      return !!(r && r.width > 1 && r.height > 1);   // 跳过尚未布局 / 隐藏的按钮
+    });
+  } catch(e){ return []; }
+}
+function menuOverflows(){
+  const stage = $('stage'), list = menuEntryButtons();
+  if (!stage || !list.length) return false;
+  const st = stage.getBoundingClientRect();
+  const canHit = typeof document.elementFromPoint === 'function';
+  // 底部让出诊断行那条窄带：它是绝对定位的只读信息，不能被入口压住（诊断行本身也不能挡住点击）
+  let bottomLimit = st.bottom - 2;
+  const diag = $('diag');
+  if (diag && diag.hidden === false && diag.getBoundingClientRect){
+    const dr = diag.getBoundingClientRect();
+    if (dr.height > 0 && dr.height < st.height / 2) bottomLimit = Math.min(bottomLimit, dr.top - 2);
+  }
+  const inside = function(r){
+    return r.top >= st.top - 0.5 && r.bottom <= bottomLimit &&
+           r.left >= st.left - 0.5 && r.right <= st.right + 0.5;
+  };
+  for (let i = 0; i < list.length; i++){
+    const r = list[i].getBoundingClientRect();
+    if (!inside(r)) return true;   // 越出可视区 / 压到诊断行
+    if (canHit){
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const owner = (hit && hit.closest) ? hit.closest('button[data-act]') : null;
+      if (owner !== list[i]) return true;   // 被别的元素盖住 / 中心其实落在画面外
+    }
+  }
+  // 标题 / 副标题 / 每个入口下面的说明小字也要完整可见，否则看上去像菜单被切了一半
+  let texts = [];
+  try { texts = Array.prototype.slice.call(document.querySelectorAll('.menu-left h1, .menu-left .sub, .menu-btns .btn-note')); } catch(e){ texts = []; }
+  for (let i = 0; i < texts.length; i++){
+    const r = texts[i].getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    if (!inside(r)) return true;
+  }
+  return false;
+}
+function fitMenu(){
+  const grid = document.querySelector('.menu-grid'), scr = $('scrMenu');
+  if (!grid || !grid.style) return 1;
+  if (scr && scr.classList && !scr.classList.contains('on')) return 1;   // 只有主菜单可见时测量才有意义
+  const rot = $('rotate');
+  if (rot && rot.classList && rot.classList.contains('on')) return 1;   // 竖屏提示盖住整屏时不做缩放
+  let scale = 1;
+  try {
+    grid.style.fontSize = '';
+    let guard = 0;
+    while (menuOverflows() && scale > MENU_FIT_MIN + 1e-6 && guard < 30){
+      scale = Math.max(MENU_FIT_MIN, Math.round((scale - MENU_FIT_STEP) * 100) / 100);
+      grid.style.fontSize = (scale * 100) + '%';
+      guard++;
+    }
+    const left = document.querySelector('.menu-left');
+    if (left && left.classList) left.classList.toggle('menu-scroll', menuOverflows());
+  } catch(e){ /* 测量失败时保持原字号，绝不影响游戏 */ }
+  window.__bgMenuScale = scale;
+  return scale;
+}
 function isTouchDevice(){
   try {
     return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ||
@@ -1328,6 +1409,8 @@ function updateViewport(){
     bf.textContent = fs ? '🗗' : '⛶';
     bf.title = fs ? '退出全屏' : '全屏';
   }
+  try { fitMenu(); } catch(e){}
+  if (window.__bgDiag) { try { window.__bgDiag(); } catch(e){} }
 }
 function bindViewport(){
   const bf = $('btnFull');
@@ -1344,6 +1427,8 @@ function bindViewport(){
     } catch(e){}
   }
   updateViewport();
+  // v1.1.4：首屏布局 / WebView 字号稳定后再兜底一次（onPageFinished 之后字号才最终确定）
+  setTimeout(function(){ try { updateViewport(); } catch(e){} }, 200);
 }
 
 /* ---------------- 启动 ---------------- */

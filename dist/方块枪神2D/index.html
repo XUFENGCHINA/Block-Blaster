@@ -341,6 +341,9 @@
   </div>
 
   <div id="toast"></div>
+
+  <!-- 运行环境诊断行（v1.1.4）：反馈问题时请附带这一行内容 -->
+  <div id="diag" hidden title="运行环境诊断：视口 / dpr / WebView 内核 / 主菜单自适应比例"></div>
 </div>
 
 <script src="js/data.js"></script>
@@ -353,6 +356,33 @@
   Game.init();
   UI.init();
   if (window.PWA && PWA.init) PWA.init();
+</script>
+<script>
+/* v1.1.4 诊断行：视口 / dpr / WebView（或浏览器）内核版本 / 主菜单自适应比例。
+   手机上报「按钮点不动」时，这一行就能直接分辨是内核过旧还是字号被系统放大。 */
+(function(){
+  function kernelText(){
+    var ua = navigator.userAgent || '';
+    var m = /Chrome\/(\d+)/.exec(ua);
+    var isWV = /(^|[\s;(])wv([\s;)]|$)/.test(ua) || /Android/.test(ua);
+    if (!m) return isWV ? 'WebView 未知' : '非 Chromium';
+    return (isWV ? 'WebView ' : 'Chrome/') + m[1];
+  }
+  function refresh(){
+    try {
+      var el = document.getElementById('diag');
+      if (!el) return;
+      var scale = (typeof window.__bgMenuScale === 'number') ? Math.round(window.__bgMenuScale * 100) + '%' : '--';
+      el.textContent = 'v1.1.4 · ' + window.innerWidth + '×' + window.innerHeight +
+        ' · dpr' + (window.devicePixelRatio || 1) + ' · ' + kernelText() + ' · 菜单 ' + scale;
+    } catch(e){ /* 诊断行永远不能影响游戏 */ }
+  }
+  window.__bgDiag = refresh;
+  window.addEventListener('resize', refresh);
+  window.addEventListener('orientationchange', refresh);
+  setInterval(refresh, 1000);
+  refresh();
+})();
 </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-04T12:56:02.465Z",
+  "generatedAt": "2026-10-06T04:20:45.665Z",
   "total": 50,
   "cover": {
     "chaser": "战役·训练场",
@@ -13,7 +13,7 @@
     "chaser_fast": "战役·十字回廊",
     "chaser_armor": "战役·熔炉深渊",
     "chaser_rage": "战役·幽影禁区",
-    "chaser_blink": "战役·霜原前哨",
+    "chaser_blink": "战役·黑潮深渊",
     "chaser_shield": "战役·幽影禁区",
     "chaser_regen": "战役·霜原前哨",
     "chaser_giant": "战役·霜原前哨",
@@ -35,22 +35,22 @@
     "tank_heavy": "战役·重装禁区",
     "tank_fortress": "战役·黑潮深渊",
     "tank_spike": "战役·重装禁区",
-    "tank_regen": "战役·磁暴回廊",
+    "tank_regen": "战役·黑潮深渊",
     "tank_beast": "战役·幽影禁区",
     "bomber_big": "战役·爆破工厂",
     "bomber_fast": "战役·爆破工厂",
-    "bomber_nuke": "战役·黑潮深渊",
+    "bomber_nuke": "战役·磁暴回廊",
     "summoner": "战役·霜原前哨",
     "necromancer": "战役·黑潮深渊",
-    "vampire": "战役·霜原前哨",
-    "healer": "战役·熔炉工厂",
+    "vampire": "战役·黑潮深渊",
+    "healer": "战役·幽影禁区",
     "juggernaut": "战役·霓虹回廊",
     "warlord": "战役·废土禁区",
     "boss_ice": "战役·磁暴竞技场",
     "boss_lava": "战役·霜原前哨",
     "boss_void": "战役·焦土竞技场",
     "elite_champion": "战役·方块之王",
-    "mimic": "战役·熔炉工厂",
+    "mimic": "战役·幽影禁区",
     "assassin": "战役·黑潮深渊"
   }
 }

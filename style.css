@@ -660,3 +660,21 @@ body.touch .screen{
 .menu-mini .btn{ width:100%; font-size:.78em; padding:.5em .15em; letter-spacing:.02em; white-space:nowrap; }
 .menu-mini .btn-note{ margin:.12em 0 0; font-size:.55em; line-height:1.35; min-height:2.6em; text-align:center; }
 .menu-left{ min-height:0; }
+
+/* ============================================================
+   v1.1.4 主菜单溢出兜底 + 运行环境诊断行（追加，不改动上方原有规则）
+   ============================================================ */
+/* Android System WebView 跟随系统「字体大小」放大 computed font-size 时，em 布局会整体变高，
+   最后一排入口（「🎨 材质包」最先中招）被 #stage{overflow:hidden} 挤出屏幕。
+   Android 侧已用 setTextZoom(100) 从源头关掉文本缩放；这里由 ui.js 的 fitMenu() 兜底：
+   先按比例缩小 .menu-grid 自身的字号（em 级联，7 个入口都回到 stage 内），
+   缩到下限仍溢出时给 .menu-left 加 .menu-scroll，退化为主菜单可纵向滚动。 */
+.menu-left.menu-scroll{ overflow-y:auto; max-height:100%; padding-right:.35em;
+  -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
+
+/* 诊断行：只读信息，pointer-events:none 保证它永远不会挡住按钮（elementFromPoint 会跳过） */
+#diag{ position:absolute; left:.4em; bottom:.3em; z-index:2147483645;
+  max-width:calc(100% - .8em); overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  font:11px/1.35 monospace; color:#9df0ff; background:rgba(0,0,0,.55);
+  padding:1px 6px; border-radius:.3em; opacity:.8; pointer-events:none; }
+#diag[hidden]{ display:none; }
